@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
-        
+       
         :root {
             --bg: #0b1220;
             --card: #121b2e;
@@ -16,14 +16,12 @@
             --sub: #9fb0d6;
             --accent: #2563eb;
         }
-
         body {
             font-family: 'Inter', "Noto Sans TC", sans-serif;
             background: linear-gradient(160deg, #0b1220, #111827 40%, #0f172a);
             color: var(--text);
             min-h-screen: 100vh;
         }
-
         .flash-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -32,25 +30,21 @@
             display: none;
             pointer-events: none;
         }
-
         .glass-card {
             background: rgba(18, 27, 46, 0.9);
             border: 1px solid rgba(148, 163, 184, 0.2);
             backdrop-filter: blur(10px);
         }
-
         .speed-chip {
             background: #1e293b;
             color: #94a3b8;
             transition: all 0.2s;
         }
-
         .speed-chip.active {
             background-color: var(--accent);
             color: white;
             box-shadow: 0 0 15px rgba(37, 99, 235, 0.4);
         }
-
         .btn-download {
             display: block;
             text-decoration: none;
@@ -61,10 +55,7 @@
             padding: 14px 12px;
             transition: transform 0.1s, opacity 0.2s;
         }
-
         .btn-download:active { transform: scale(0.98); }
-
-        /* 自定義切換開關樣式 */
         .toggle-checkbox:checked {
             background-color: var(--accent);
         }
@@ -83,9 +74,7 @@
     </style>
 </head>
 <body class="p-4">
-
     <div id="flashOverlay" class="flash-overlay"></div>
-
     <div class="max-w-md mx-auto space-y-4 pb-20">
         <!-- Header -->
         <header class="glass-card p-6 rounded-2xl shadow-xl">
@@ -124,7 +113,6 @@
                         <button onclick="setWPM(25)" class="speed-chip px-4 py-2 rounded-full font-bold text-xs">25</button>
                     </div>
                 </div>
-
                 <div class="space-y-4 border-t border-slate-800 pt-4">
                     <!-- 實體閃光燈 -->
                     <div class="flex items-center justify-between">
@@ -194,21 +182,35 @@
             </div>
         </main>
 
-        <!-- Download Section (Integrated) -->
-        <section class="glass-card p-6 rounded-2xl shadow-2xl space-y-4 mt-8 border-t-4 border-t-blue-600">
+        <!-- Download Section with QR Code -->
+        <section class="glass-card p-6 rounded-2xl shadow-2xl space-y-6 mt-8 border-t-4 border-t-blue-600">
             <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
                 <i class="fa-solid fa-cloud-arrow-down text-blue-500"></i>
                 下載原生 App 版
             </h2>
             <p class="text-[#9fb0d6] text-sm leading-relaxed">
-                網頁版受限於瀏覽器安全政策，強烈建議下載原生版以獲得完整的閃光燈與後台發送支援。
+                網頁版受限於瀏覽器安全政策，強烈建議使用原生版以獲得完整功能。
             </p>
+
+            <!-- Expo QR Code -->
+            <div class="bg-[#0b1220] p-6 rounded-2xl border border-slate-700 text-center">
+                <p class="text-blue-400 text-sm font-bold mb-4 flex items-center justify-center gap-2">
+                    📱 給小朋友的測試版
+                </p>
+                <div class="flex justify-center mb-4">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=exp%3A%2F%2Fu.expo.dev%2Fd2d8fef2-8e3f-4f92-abe5-be62246ea7e6%2Fgroup%2Fe07c190f-0a41-448c-b302-3a79514b2495" 
+                         alt="Expo QR Code" 
+                         class="rounded-2xl shadow-2xl border border-slate-600">
+                </div>
+                <p class="text-xs text-slate-400">使用 Expo Go 掃描上方 QR Code 即可開啟測試版</p>
+            </div>
+
             <div class="grid gap-3">
                 <a class="btn-download bg-[#16a34a] hover:bg-[#15803d]" href="https://github.com/playerkousas-rgb/morse-beacon-app/releases/download/v1.0/application-3099cc16-d5ab-460e-9613-74b9147e5826.apk">
                     <i class="fa-brands fa-android mr-2"></i> 下載 Android APK
                 </a>
-                <a class="btn-download bg-[#0e7490] hover:bg-[#155e75]" href="#" onclick="customAlert('Expo Go 連結尚未設定，請稍後。'); return false;">
-                    使用 Expo Go 開啟
+                <a class="btn-download bg-[#0e7490] hover:bg-[#155e75]" href="#" onclick="customAlert('請掃描上方 QR Code 使用 Expo Go 開啟'); return false;">
+                    <i class="fa-solid fa-qrcode mr-2"></i> 使用 Expo Go 開啟
                 </a>
                 <a class="btn-download bg-slate-700 opacity-50 cursor-not-allowed text-slate-400" href="#">
                     iOS TestFlight (Coming Soon)
@@ -242,13 +244,11 @@
             '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...', '8': '---..', '9': '----.',
             '.': '.-.-.-', ',': '--..--', '?': '..--..', '/': '-..-.', '-': '-....-', ' ': ' / '
         };
-
         let currentWPM = 15;
         let unitMs = 80;
         let isTransmitting = false;
         let stopFlag = false;
         let videoTrack = null;
-
         const messageInput = document.getElementById('messageInput');
         const morsePreview = document.getElementById('morsePreview');
         const flashOverlay = document.getElementById('flashOverlay');
@@ -295,9 +295,9 @@
                     return null;
                 }
                 return track;
-            } catch (err) { 
+            } catch (err) {
                 customAlert('無法取得相機權限（閃光燈需要相機權限才能運作）。');
-                return null; 
+                return null;
             }
         }
 
@@ -311,7 +311,7 @@
             if (audioCtx.state === 'suspended') await audioCtx.resume();
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.frequency.value = 750; // 稍微調高音調更清脆
+            osc.frequency.value = 750;
             gain.gain.setValueAtTime(0, audioCtx.currentTime);
             gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.005);
             gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + (duration/1000) - 0.005);
@@ -326,7 +326,6 @@
         async function transmit() {
             const msg = messageInput.value.trim();
             if (!msg) return;
-
             videoTrack = await initTorch();
             const words = msg.toUpperCase().split(/\s+/);
             const events = [];
@@ -351,12 +350,11 @@
                 if (stopFlag) break;
                 const e = events[i];
                 progressText.innerText = `${i + 1}/${events.length}`;
-
                 if (e.type === 'on') {
                     if (document.getElementById('screenOn').checked) flashOverlay.style.display = 'block';
                     if (videoTrack) setTorch(true, videoTrack);
                     if (document.getElementById('vibrateOn').checked && navigator.vibrate) navigator.vibrate(e.d);
-                    
+                   
                     if (document.getElementById('audioOn').checked) await playTone(e.d);
                     else await new Promise(r => setTimeout(r, e.d));
                 } else {
@@ -388,7 +386,9 @@
             progressBox.classList.toggle('hidden', !active);
         }
 
+        // 初始化
         setWPM(15);
+        messageInput.dispatchEvent(new Event('input'));
     </script>
 </body>
 </html>

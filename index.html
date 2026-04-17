@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SKW Morse 發訊器｜下載頁</title>
+  <style>
+    :root{
+      --bg:#0b1220; --card:#121b2e; --text:#e8eefc; --sub:#9fb0d6;
+      --p:#2563eb; --a:#0e7490; --w:#334155;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;
+      background:linear-gradient(160deg,#0b1220,#111827 40%,#0f172a);
+      color:var(--text);
+    }
+    .wrap{max-width:760px;margin:0 auto;padding:28px 16px 36px}
+    .card{
+      background:rgba(18,27,46,.9); border:1px solid rgba(148,163,184,.2);
+      border-radius:16px; padding:18px; margin-bottom:14px;
+    }
+    h1{margin:0 0 8px;font-size:28px}
+    p{margin:0;color:var(--sub);line-height:1.7}
+    .btns{display:grid;gap:10px;margin-top:14px}
+    .btn{
+      display:block;text-decoration:none;color:#fff;font-weight:800;text-align:center;
+      border-radius:12px;padding:14px 12px
+    }
+    .b1{background:var(--p)}
+    .b2{background:#16a34a}
+    .b3{background:var(--a)}
+    .b4{background:var(--w);opacity:.7;pointer-events:none}
+    .note{font-size:14px;margin-top:10px}
+    .footer{text-align:center;color:var(--sub);font-weight:700;margin-top:14px}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1>SKW Morse 發訊器</h1>
+      <p>
+        支援摩斯碼發送與接收，提供螢幕閃光、手機閃光燈、喇叭蜂鳴與震動回饋。
+      </p>
+      <div class="btns">
+        <a class="btn b2" href="https://github.com/playerkousas-rgb/morse-beacon-app/releases/download/v1.0/application-3099cc16-d5ab-460e-9613-74b9147e5826.apk">
+          下載 Android APK
+        </a>
+        <a class="btn b3" href="#" onclick="alert('Expo Go 連結尚未設定，請稍後。'); return false;">
+          使用 Expo Go 開啟（即將補上）
+        </a>
+        <a class="btn b4" href="#">
+          iOS TestFlight（即將推出）
+        </a>
+      </div>
+      <p class="note">
+        ※ Android 如出現「未知來源」提示，請先允許安裝後再執行。<br/>
+        ※ 目前此頁為下載入口頁，Web 互動版尚未上線。
+      </p>
+    </section>
+    <div class="footer">© 2026 SKWSCOUT. All rights reserved.</div>
+  </main>
+</body>
+</html>

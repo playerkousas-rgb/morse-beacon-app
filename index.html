@@ -3,21 +3,17 @@ import {
   Volume2, 
   VolumeX, 
   Zap, 
-  ZapOff, 
   Play, 
   Square, 
   Settings, 
   MessageSquare,
   Mic,
   Sun,
-  Camera,
   Info,
   Download,
   Share2,
-  Copy,
   Check,
   Smartphone,
-  ExternalLink,
   Apple,
   Grid
 } from 'lucide-react';
@@ -28,10 +24,10 @@ const MORSE_MAP = {
   '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...', '8': '---..', '9': '----.',
 };
 
-// 請在此處填入您真實的連結
-const APK_LINK = "https://your-actual-apk-link.com/app.apk"; 
-const EXPO_LINK = "https://expo.dev/@your-username/your-project-slug";
-const IOS_LINK = "https://apps.apple.com/app/your-app-id";
+// 您的真實連結
+const APK_LINK = "https://morse-beacon-nkbdvwa6d-playerkousas-rgbs-projects.vercel.app/MorseBeacon.apk"; 
+const EXPO_LINK = "https://expo.dev/artifacts/eas/jXfXWp3x9wB8uE5V3Xz1Gz.apk"; // 範例連結，可自行替換
+const IOS_LINK = "#";
 
 const SAMPLE_RATE = 44100;
 const TONE_FREQUENCY_HZ = 700;
@@ -119,10 +115,15 @@ export default function App() {
     const blob = generateToneWavBlob(durationMs);
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
-    await audio.play();
-    await sleep(durationMs);
-    audio.pause();
-    URL.revokeObjectURL(url);
+    try {
+      await audio.play();
+      await sleep(durationMs);
+      audio.pause();
+    } catch (e) {
+      console.log("Audio play blocked");
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   };
 
   const transmit = async () => {
@@ -155,32 +156,17 @@ export default function App() {
     setLightOn(false);
   };
 
-  const downloadTxt = () => {
-    const content = `Morse Beacon Export\n-------------------\nMessage: ${message}\nMorse: ${morseText}\nSpeed: ${wpm} WPM\nDate: ${new Date().toLocaleString()}`;
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `morse_${message.replace(/\s+/g, '_').toLowerCase()}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const shareLink = () => {
     const baseUrl = window.location.origin + window.location.pathname;
     const url = `${baseUrl}?msg=${encodeURIComponent(message)}&wpm=${wpm}`;
-    if (navigator.share) {
-      navigator.share({ title: 'Morse Beacon Share', text: `跟我一起練習摩斯碼：${message}`, url });
-    } else {
-      const textArea = document.createElement("textarea");
-      textArea.value = url;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+    const textArea = document.createElement("textarea");
+    textArea.value = url;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const simulateReceive = async () => {
@@ -195,7 +181,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-500/30">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-500/30 pb-12">
       {screenOn && lightOn && (
         <div className="fixed inset-0 bg-white z-[100] pointer-events-none transition-opacity duration-75" />
       )}
@@ -210,18 +196,16 @@ export default function App() {
             <p className="text-slate-500 font-medium mt-1">跨平台摩斯發訊與接收系統</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={downloadTxt} title="下載紀錄檔" className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-800 hover:border-slate-700 text-slate-400 transition-all active:scale-95">
-              <Download size={18} />
-            </button>
-            <button onClick={shareLink} title="分享連結" className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-800 hover:border-slate-700 text-slate-400 transition-all flex items-center gap-2 active:scale-95">
+            <button onClick={shareLink} title="分享連結" className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-800 text-slate-400 transition-all flex items-center gap-2 active:scale-95">
               {copied ? <Check size={18} className="text-blue-500" /> : <Share2 size={18} />}
+              <span className="text-xs font-bold">{copied ? '已複製' : '分享'}</span>
             </button>
           </div>
         </header>
 
         <div className="space-y-6">
-          {/* 下載與運行引導區塊 - 優化一致性 */}
-          <section className="bg-slate-900 border border-blue-500/20 rounded-2xl p-6 shadow-2xl shadow-blue-500/5 relative overflow-hidden group">
+          {/* 原生應用程式下載區塊 */}
+          <section className="bg-slate-900 border border-blue-500/20 rounded-2xl p-6 shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                <Smartphone size={80} />
             </div>
@@ -234,15 +218,15 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <a href={APK_LINK} className="flex items-center justify-center gap-3 bg-slate-950 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900 p-4 rounded-xl transition-all group/btn active:scale-95">
+              <a href={APK_LINK} download className="flex items-center justify-center gap-3 bg-slate-950 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900 p-4 rounded-xl transition-all active:scale-95 shadow-inner">
                 <Download size={18} className="text-blue-500" />
                 <span className="text-sm font-bold">APK 下載</span>
               </a>
-              <a href={EXPO_LINK} target="_blank" className="flex items-center justify-center gap-3 bg-slate-950 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900 p-4 rounded-xl transition-all active:scale-95">
+              <a href={EXPO_LINK} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-3 bg-slate-950 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900 p-4 rounded-xl transition-all active:scale-95 shadow-inner">
                 <Grid size={18} className="text-blue-500" />
                 <span className="text-sm font-bold">Expo Go</span>
               </a>
-              <a href={IOS_LINK} target="_blank" className="flex items-center justify-center gap-3 bg-slate-950 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900 p-4 rounded-xl transition-all active:scale-95">
+              <a href={IOS_LINK} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-3 bg-slate-950 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900 p-4 rounded-xl transition-all active:scale-95 shadow-inner opacity-50">
                 <Apple size={18} className="text-blue-500" />
                 <span className="text-sm font-bold">App Store</span>
               </a>
@@ -251,18 +235,18 @@ export default function App() {
             <div className="mt-5 flex items-start gap-2 px-1">
               <Info size={14} className="text-slate-600 mt-0.5" />
               <p className="text-[11px] text-slate-500 leading-normal">
-                提示：原生版本支援相機閃光燈發送。若安裝 APK，請在 Android 設定中允許「安裝未知來源應用程式」。
+                提示：手機原生版本支援相機閃光燈。安裝 APK 時若彈出警告，請允許安裝未知來源應用程式。
               </p>
             </div>
           </section>
 
-          {/* 訊息編輯 */}
+          {/* 訊息編輯區 */}
           <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
             <div className="flex items-center gap-2 mb-4 text-blue-400">
               <div className="p-1.5 bg-blue-500/10 rounded-lg">
                 <MessageSquare size={18} />
               </div>
-              <h2 className="font-bold uppercase tracking-wider text-xs">訊息編輯與轉換</h2>
+              <h2 className="font-bold uppercase tracking-wider text-xs">訊息轉換</h2>
             </div>
             
             <div className="space-y-5">
@@ -272,14 +256,14 @@ export default function App() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-4 text-lg font-bold focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all resize-none h-24 text-white"
-                  placeholder="輸入要轉換的內容..."
+                  placeholder="輸入文字..."
                 />
               </div>
 
               <div>
                 <label className="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">摩斯碼預覽</label>
                 <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 min-h-[70px] break-all font-mono text-xl tracking-[0.2em] text-blue-400/90 leading-relaxed shadow-inner">
-                  {morseText || <span className="text-slate-800 italic tracking-normal text-base">無有效字元</span>}
+                  {morseText || <span className="text-slate-800 italic tracking-normal text-base">無有效內容</span>}
                 </div>
               </div>
             </div>
@@ -291,12 +275,12 @@ export default function App() {
               <div className="p-1.5 bg-blue-500/10 rounded-lg">
                 <Settings size={18} />
               </div>
-              <h2 className="font-bold uppercase tracking-wider text-xs">傳輸與發報設定</h2>
+              <h2 className="font-bold uppercase tracking-wider text-xs">發報設定</h2>
             </div>
             <div className="space-y-6">
               <div>
                 <div className="flex justify-between items-end mb-3">
-                   <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">發報速度 (WPM)</label>
+                   <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">速度 (WPM)</label>
                    <span className="text-blue-500 font-mono font-bold text-sm">{wpm} WPM</span>
                 </div>
                 <div className="grid grid-cols-5 gap-2">
@@ -304,10 +288,10 @@ export default function App() {
                     <button
                       key={v}
                       onClick={() => setWpm(v)}
-                      className={`py-2.5 rounded-xl font-bold transition-all text-sm border ${
+                      className={`py-2 rounded-xl font-bold transition-all text-xs border ${
                         wpm === v 
-                        ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' 
-                        : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'
+                        ? 'bg-blue-600 border-blue-500 text-white' 
+                        : 'bg-slate-950 border-slate-800 text-slate-500'
                       }`}
                     >
                       {v}
@@ -318,78 +302,55 @@ export default function App() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Toggle label="螢幕閃光" active={screenOn} onChange={setScreenOn} icon={<Sun size={18} />} />
                 <Toggle label="音頻蜂鳴" active={audioOn} onChange={setAudioOn} icon={audioOn ? <Volume2 size={18} /> : <VolumeX size={18} />} />
-                <Toggle label="觸覺震動" active={vibrateOn} onChange={setVibrateOn} icon={<Zap size={18} />} disabled={!navigator.vibrate} />
               </div>
             </div>
           </section>
 
-          {/* 操作按鈕 */}
+          {/* 啟動按鈕 */}
           <div className="flex gap-4">
             {!isTransmitting ? (
-              <button onClick={transmit} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98]">
+              <button onClick={transmit} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98]">
                 <Play size={22} fill="currentColor" /> 開始傳輸
               </button>
             ) : (
-              <button onClick={stopTransmission} className="flex-1 bg-red-600 hover:bg-red-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-red-600/20 active:scale-[0.98]">
+              <button onClick={stopTransmission} className="flex-1 bg-red-600 hover:bg-red-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-xl active:scale-[0.98]">
                 <Square size={22} fill="currentColor" /> 停止傳輸
               </button>
             )}
           </div>
 
-          {/* 進度顯示 */}
-          {isTransmitting && (
-            <div className="bg-blue-500/5 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between shadow-inner">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                <span className="font-bold text-blue-500 text-sm tracking-wide">信號傳送中...</span>
-              </div>
-              <div className="flex items-baseline gap-1">
-                 <span className="font-mono font-black text-blue-500 text-lg">{progress.current}</span>
-                 <span className="text-slate-600 font-bold text-xs">/ {progress.total}</span>
-              </div>
-            </div>
-          )}
-
-          {/* 接收器區塊 */}
+          {/* 解碼器模擬 */}
           <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
             <div className="flex items-center gap-2 mb-6 text-emerald-500">
               <div className="p-1.5 bg-emerald-500/10 rounded-lg">
                 <Mic size={18} />
               </div>
-              <h2 className="font-bold uppercase tracking-wider text-xs">信號解碼模擬器</h2>
+              <h2 className="font-bold uppercase tracking-wider text-xs">信號解碼模擬</h2>
             </div>
             <div className="grid grid-cols-2 gap-3 mb-6">
-              <button onClick={simulateReceive} disabled={isReceiving} className="bg-slate-950 border border-slate-800 hover:border-emerald-500/30 hover:bg-slate-900 disabled:opacity-50 py-4 rounded-xl font-bold flex flex-col items-center gap-2 transition-all active:scale-95">
+              <button onClick={simulateReceive} disabled={isReceiving} className="bg-slate-950 border border-slate-800 hover:bg-slate-900 disabled:opacity-50 py-4 rounded-xl font-bold flex flex-col items-center gap-2 transition-all">
                 <Mic size={20} className="text-emerald-500" />
                 <span className="text-xs">聲頻偵測</span>
               </button>
-              <button onClick={simulateReceive} disabled={isReceiving} className="bg-slate-950 border border-slate-800 hover:border-emerald-500/30 hover:bg-slate-900 disabled:opacity-50 py-4 rounded-xl font-bold flex flex-col items-center gap-2 transition-all active:scale-95">
+              <button onClick={simulateReceive} disabled={isReceiving} className="bg-slate-950 border border-slate-800 hover:bg-slate-900 disabled:opacity-50 py-4 rounded-xl font-bold flex flex-col items-center gap-2 transition-all">
                 <Sun size={20} className="text-emerald-500" />
                 <span className="text-xs">光感偵測</span>
               </button>
             </div>
             <div className="space-y-4">
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 shadow-inner">
-                <label className="block text-[10px] font-black text-slate-600 uppercase mb-2 tracking-widest">接收 Morse</label>
-                <div className="font-mono text-sm min-h-[24px] text-slate-300 break-all tracking-widest">
-                  {rxMorse || <span className="opacity-20 italic">待輸入信號...</span>}
-                </div>
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+                <label className="block text-[10px] font-black text-slate-600 uppercase mb-2">接收 Morse</label>
+                <div className="font-mono text-sm min-h-[24px] text-slate-300 break-all">{rxMorse || '...'}</div>
               </div>
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 shadow-inner">
-                <label className="block text-[10px] font-black text-slate-600 uppercase mb-2 tracking-widest">即時譯文</label>
-                <div className="font-bold min-h-[24px] text-emerald-500">
-                  {rxText || <span className="opacity-20 italic text-slate-700">等待解碼結果...</span>}
-                </div>
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+                <label className="block text-[10px] font-black text-slate-600 uppercase mb-2">即時譯文</label>
+                <div className="font-bold min-h-[24px] text-emerald-500">{rxText || '...'}</div>
               </div>
             </div>
           </section>
 
-          <footer className="pt-12 pb-6 text-center">
-            <div className="flex items-center justify-center gap-1.5 text-slate-600 mb-3">
-               <Info size={14} />
-               <p className="text-[11px] font-medium italic">此工具僅供教學與通訊演示使用</p>
-            </div>
-            <p className="text-[10px] font-black text-slate-800 tracking-[0.2em] uppercase">© 2026 SKWSCOUT. PROTOCOL 1.4.0</p>
+          <footer className="pt-8 text-center">
+            <p className="text-[10px] font-black text-slate-800 tracking-[0.2em] uppercase">© 2026 SKWSCOUT. PROTOCOL 1.5.0</p>
           </footer>
         </div>
       </div>
@@ -403,14 +364,12 @@ function Toggle({ label, active, onChange, icon, disabled = false }) {
       disabled={disabled}
       onClick={() => onChange(!active)}
       className={`flex items-center justify-between p-3.5 rounded-xl transition-all border ${
-        disabled ? 'opacity-20 grayscale cursor-not-allowed border-transparent' :
-        active ? 'bg-blue-500/5 border-blue-500/30 text-blue-400 shadow-inner' : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'
+        disabled ? 'opacity-20 cursor-not-allowed border-transparent' :
+        active ? 'bg-blue-500/5 border-blue-500/30 text-blue-400' : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'
       }`}
     >
       <div className="flex items-center gap-3">
-        <div className={active ? 'text-blue-500' : 'text-slate-600'}>
-          {icon}
-        </div>
+        {icon}
         <span className="font-bold text-xs uppercase tracking-wider">{label}</span>
       </div>
       <div className={`w-9 h-4 rounded-full relative transition-colors ${active ? 'bg-blue-600' : 'bg-slate-800'}`}>

@@ -1,64 +1,421 @@
-<!doctype html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SKW Morse 發訊器｜下載頁</title>
-  <style>
-    :root{
-      --bg:#0b1220; --card:#121b2e; --text:#e8eefc; --sub:#9fb0d6;
-      --p:#2563eb; --a:#0e7490; --w:#334155;
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { 
+  Volume2, 
+  VolumeX, 
+  Zap, 
+  ZapOff, 
+  Play, 
+  Square, 
+  Settings, 
+  MessageSquare,
+  Mic,
+  Sun,
+  Camera,
+  Info,
+  Download,
+  Share2,
+  Copy,
+  Check,
+  Smartphone,
+  ExternalLink,
+  Apple,
+  Grid
+} from 'lucide-react';
+
+const MORSE_MAP = {
+  A: '.-', B: '-...', C: '-.-.', D: '-..', E: '.', F: '..-.', G: '--.', H: '....', I: '..', J: '.---', K: '-.-', L: '.-..',
+  M: '--', N: '-.', O: '---', P: '.--.', Q: '--.-', R: '.-.', S: '...', T: '-', U: '..-', V: '...-', W: '.--', X: '-..-', Y: '-.--', Z: '--..',
+  '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...', '8': '---..', '9': '----.',
+};
+
+// 請在此處填入您真實的連結
+const APK_LINK = "https://your-actual-apk-link.com/app.apk"; 
+const EXPO_LINK = "https://expo.dev/@your-username/your-project-slug";
+const IOS_LINK = "https://apps.apple.com/app/your-app-id";
+
+const SAMPLE_RATE = 44100;
+const TONE_FREQUENCY_HZ = 700;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function textToMorse(input) {
+  return input.toUpperCase().split(' ').map((word) => 
+    word.split('').map((c) => MORSE_MAP[c] ?? '').filter(Boolean).join(' ')
+  ).filter(Boolean).join(' / ');
+}
+
+function morseToText(raw) {
+  const reverse = {};
+  Object.keys(MORSE_MAP).forEach((k) => (reverse[MORSE_MAP[k]] = k));
+  return raw.split(' / ').map((word) => 
+    word.split(' ').map((code) => reverse[code] ?? '?').join('')
+  ).join(' ');
+}
+
+function buildPlayEvents(input, unitMs) {
+  const events = [];
+  const words = input.trim().toUpperCase().split(/\s+/).filter(Boolean);
+  words.forEach((word, wi) => {
+    const letters = word.split('').map((c) => MORSE_MAP[c]).filter(Boolean);
+    letters.forEach((letter, li) => {
+      letter.split('').forEach((s, si, arr) => {
+        events.push({ type: 'on', durationMs: s === '.' ? unitMs : unitMs * 3 });
+        if (si < arr.length - 1) events.push({ type: 'off', durationMs: unitMs });
+      });
+      if (li < letters.length - 1) events.push({ type: 'off', durationMs: unitMs * 3 });
+    });
+    if (wi < words.length - 1) events.push({ type: 'off', durationMs: unitMs * 7 });
+  });
+  return events;
+}
+
+function generateToneWavBlob(durationMs, frequencyHz = TONE_FREQUENCY_HZ) {
+  const sampleCount = Math.max(1, Math.floor((SAMPLE_RATE * durationMs) / 1000));
+  const dataSize = sampleCount * 2;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+  const ws = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+  ws(0, 'RIFF'); view.setUint32(4, 36 + dataSize, true); ws(8, 'WAVE'); ws(12, 'fmt ');
+  view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true); view.setUint32(24, SAMPLE_RATE, true);
+  view.setUint32(28, SAMPLE_RATE * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true); ws(36, 'data'); view.setUint32(40, dataSize, true);
+  let off = 44;
+  for (let i = 0; i < sampleCount; i++) {
+    const t = i / SAMPLE_RATE;
+    const amp = 0.3 * Math.min(1, i / (SAMPLE_RATE * 0.01));
+    view.setInt16(off, Math.sin(2 * Math.PI * frequencyHz * t) * amp * 32767, true);
+    off += 2;
+  }
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
+export default function App() {
+  const [message, setMessage] = useState('SOS HELP');
+  const [wpm, setWpm] = useState(15);
+  const [isTransmitting, setIsTransmitting] = useState(false);
+  const [lightOn, setLightOn] = useState(false);
+  const [audioOn, setAudioOn] = useState(true);
+  const [screenOn, setScreenOn] = useState(true);
+  const [vibrateOn, setVibrateOn] = useState(true);
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [copied, setCopied] = useState(false);
+  
+  const [rxMorse, setRxMorse] = useState('');
+  const [rxText, setRxText] = useState('');
+  const [isReceiving, setIsReceiving] = useState(false);
+
+  const stopRef = useRef(false);
+  const morseText = useMemo(() => textToMorse(message), [message]);
+  const unitMs = useMemo(() => Math.max(40, Math.min(320, Math.round(1200 / wpm))), [wpm]);
+  const events = useMemo(() => buildPlayEvents(message, unitMs), [message, unitMs]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const msgParam = params.get('msg');
+    const wpmParam = params.get('wpm');
+    if (msgParam) setMessage(decodeURIComponent(msgParam));
+    if (wpmParam) setWpm(parseInt(wpmParam) || 15);
+  }, []);
+
+  const playBeep = async (durationMs) => {
+    const blob = generateToneWavBlob(durationMs);
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    await audio.play();
+    await sleep(durationMs);
+    audio.pause();
+    URL.revokeObjectURL(url);
+  };
+
+  const transmit = async () => {
+    if (!message.trim()) return;
+    stopRef.current = false;
+    setIsTransmitting(true);
+    setProgress({ current: 0, total: events.length });
+    for (let i = 0; i < events.length; i++) {
+      if (stopRef.current) break;
+      const event = events[i];
+      setProgress({ current: i + 1, total: events.length });
+      if (event.type === 'on') {
+        setLightOn(true);
+        if (vibrateOn && navigator.vibrate) navigator.vibrate(event.durationMs);
+        if (audioOn) await playBeep(event.durationMs);
+        else await sleep(event.durationMs);
+      } else {
+        setLightOn(false);
+        await sleep(event.durationMs);
+      }
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;
-      background:linear-gradient(160deg,#0b1220,#111827 40%,#0f172a);
-      color:var(--text);
+    setLightOn(false);
+    setIsTransmitting(false);
+    setProgress({ current: 0, total: 0 });
+  };
+
+  const stopTransmission = () => {
+    stopRef.current = true;
+    setIsTransmitting(false);
+    setLightOn(false);
+  };
+
+  const downloadTxt = () => {
+    const content = `Morse Beacon Export\n-------------------\nMessage: ${message}\nMorse: ${morseText}\nSpeed: ${wpm} WPM\nDate: ${new Date().toLocaleString()}`;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `morse_${message.replace(/\s+/g, '_').toLowerCase()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const shareLink = () => {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const url = `${baseUrl}?msg=${encodeURIComponent(message)}&wpm=${wpm}`;
+    if (navigator.share) {
+      navigator.share({ title: 'Morse Beacon Share', text: `跟我一起練習摩斯碼：${message}`, url });
+    } else {
+      const textArea = document.createElement("textarea");
+      textArea.value = url;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
-    .wrap{max-width:760px;margin:0 auto;padding:28px 16px 36px}
-    .card{
-      background:rgba(18,27,46,.9); border:1px solid rgba(148,163,184,.2);
-      border-radius:16px; padding:18px; margin-bottom:14px;
-    }
-    h1{margin:0 0 8px;font-size:28px}
-    p{margin:0;color:var(--sub);line-height:1.7}
-    .btns{display:grid;gap:10px;margin-top:14px}
-    .btn{
-      display:block;text-decoration:none;color:#fff;font-weight:800;text-align:center;
-      border-radius:12px;padding:14px 12px
-    }
-    .b1{background:var(--p)}
-    .b2{background:#16a34a}
-    .b3{background:var(--a)}
-    .b4{background:var(--w);opacity:.7;pointer-events:none}
-    .note{font-size:14px;margin-top:10px}
-    .footer{text-align:center;color:var(--sub);font-weight:700;margin-top:14px}
-  </style>
-</head>
-<body>
-  <main class="wrap">
-    <section class="card">
-      <h1>SKW Morse 發訊器</h1>
-      <p>
-        支援摩斯碼發送與接收，提供螢幕閃光、手機閃光燈、喇叭蜂鳴與震動回饋。
-      </p>
-      <div class="btns">
-        <a class="btn b2" href="https://github.com/playerkousas-rgb/morse-beacon-app/releases/download/v1.0/application-3099cc16-d5ab-460e-9613-74b9147e5826.apk">
-          下載 Android APK
-        </a>
-        <a class="btn b3" href="#" onclick="alert('Expo Go 連結尚未設定，請稍後。'); return false;">
-          使用 Expo Go 開啟（即將補上）
-        </a>
-        <a class="btn b4" href="#">
-          iOS TestFlight（即將推出）
-        </a>
+  };
+
+  const simulateReceive = async () => {
+    setIsReceiving(true);
+    setRxMorse('Listening...');
+    setRxText('Analyzing...');
+    await sleep(2000);
+    const m = textToMorse(message || "SOS");
+    setRxMorse(m);
+    setRxText(morseToText(m));
+    setIsReceiving(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-blue-500/30">
+      {screenOn && lightOn && (
+        <div className="fixed inset-0 bg-white z-[100] pointer-events-none transition-opacity duration-75" />
+      )}
+
+      <div className="max-w-2xl mx-auto px-4 py-8 md:py-12">
+        <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-2">
+              <Zap className="text-blue-500 fill-blue-500" size={28} />
+              Morse Beacon
+            </h1>
+            <p className="text-slate-500 font-medium mt-1">跨平台摩斯發訊與接收系統</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={downloadTxt} title="下載紀錄檔" className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-800 hover:border-slate-700 text-slate-400 transition-all active:scale-95">
+              <Download size={18} />
+            </button>
+            <button onClick={shareLink} title="分享連結" className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl hover:bg-slate-800 hover:border-slate-700 text-slate-400 transition-all flex items-center gap-2 active:scale-95">
+              {copied ? <Check size={18} className="text-blue-500" /> : <Share2 size={18} />}
+            </button>
+          </div>
+        </header>
+
+        <div className="space-y-6">
+          {/* 下載與運行引導區塊 - 優化一致性 */}
+          <section className="bg-slate-900 border border-blue-500/20 rounded-2xl p-6 shadow-2xl shadow-blue-500/5 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+               <Smartphone size={80} />
+            </div>
+            
+            <div className="flex items-center gap-2 mb-5">
+              <div className="p-1.5 bg-blue-500/10 rounded-lg text-blue-500">
+                <Smartphone size={18} />
+              </div>
+              <h2 className="font-bold uppercase tracking-widest text-xs text-blue-400">獲取原生應用程式</h2>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <a href={APK_LINK} className="flex items-center justify-center gap-3 bg-slate-950 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900 p-4 rounded-xl transition-all group/btn active:scale-95">
+                <Download size={18} className="text-blue-500" />
+                <span className="text-sm font-bold">APK 下載</span>
+              </a>
+              <a href={EXPO_LINK} target="_blank" className="flex items-center justify-center gap-3 bg-slate-950 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900 p-4 rounded-xl transition-all active:scale-95">
+                <Grid size={18} className="text-blue-500" />
+                <span className="text-sm font-bold">Expo Go</span>
+              </a>
+              <a href={IOS_LINK} target="_blank" className="flex items-center justify-center gap-3 bg-slate-950 border border-slate-800 hover:border-blue-500/50 hover:bg-slate-900 p-4 rounded-xl transition-all active:scale-95">
+                <Apple size={18} className="text-blue-500" />
+                <span className="text-sm font-bold">App Store</span>
+              </a>
+            </div>
+            
+            <div className="mt-5 flex items-start gap-2 px-1">
+              <Info size={14} className="text-slate-600 mt-0.5" />
+              <p className="text-[11px] text-slate-500 leading-normal">
+                提示：原生版本支援相機閃光燈發送。若安裝 APK，請在 Android 設定中允許「安裝未知來源應用程式」。
+              </p>
+            </div>
+          </section>
+
+          {/* 訊息編輯 */}
+          <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+            <div className="flex items-center gap-2 mb-4 text-blue-400">
+              <div className="p-1.5 bg-blue-500/10 rounded-lg">
+                <MessageSquare size={18} />
+              </div>
+              <h2 className="font-bold uppercase tracking-wider text-xs">訊息編輯與轉換</h2>
+            </div>
+            
+            <div className="space-y-5">
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">發送內容</label>
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-4 text-lg font-bold focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all resize-none h-24 text-white"
+                  placeholder="輸入要轉換的內容..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">摩斯碼預覽</label>
+                <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 min-h-[70px] break-all font-mono text-xl tracking-[0.2em] text-blue-400/90 leading-relaxed shadow-inner">
+                  {morseText || <span className="text-slate-800 italic tracking-normal text-base">無有效字元</span>}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 傳輸設定 */}
+          <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+            <div className="flex items-center gap-2 mb-6 text-blue-400">
+              <div className="p-1.5 bg-blue-500/10 rounded-lg">
+                <Settings size={18} />
+              </div>
+              <h2 className="font-bold uppercase tracking-wider text-xs">傳輸與發報設定</h2>
+            </div>
+            <div className="space-y-6">
+              <div>
+                <div className="flex justify-between items-end mb-3">
+                   <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">發報速度 (WPM)</label>
+                   <span className="text-blue-500 font-mono font-bold text-sm">{wpm} WPM</span>
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  {[8, 12, 15, 20, 25].map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setWpm(v)}
+                      className={`py-2.5 rounded-xl font-bold transition-all text-sm border ${
+                        wpm === v 
+                        ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' 
+                        : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'
+                      }`}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <Toggle label="螢幕閃光" active={screenOn} onChange={setScreenOn} icon={<Sun size={18} />} />
+                <Toggle label="音頻蜂鳴" active={audioOn} onChange={setAudioOn} icon={audioOn ? <Volume2 size={18} /> : <VolumeX size={18} />} />
+                <Toggle label="觸覺震動" active={vibrateOn} onChange={setVibrateOn} icon={<Zap size={18} />} disabled={!navigator.vibrate} />
+              </div>
+            </div>
+          </section>
+
+          {/* 操作按鈕 */}
+          <div className="flex gap-4">
+            {!isTransmitting ? (
+              <button onClick={transmit} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98]">
+                <Play size={22} fill="currentColor" /> 開始傳輸
+              </button>
+            ) : (
+              <button onClick={stopTransmission} className="flex-1 bg-red-600 hover:bg-red-500 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-xl shadow-red-600/20 active:scale-[0.98]">
+                <Square size={22} fill="currentColor" /> 停止傳輸
+              </button>
+            )}
+          </div>
+
+          {/* 進度顯示 */}
+          {isTransmitting && (
+            <div className="bg-blue-500/5 border border-blue-500/20 rounded-2xl p-4 flex items-center justify-between shadow-inner">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                <span className="font-bold text-blue-500 text-sm tracking-wide">信號傳送中...</span>
+              </div>
+              <div className="flex items-baseline gap-1">
+                 <span className="font-mono font-black text-blue-500 text-lg">{progress.current}</span>
+                 <span className="text-slate-600 font-bold text-xs">/ {progress.total}</span>
+              </div>
+            </div>
+          )}
+
+          {/* 接收器區塊 */}
+          <section className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+            <div className="flex items-center gap-2 mb-6 text-emerald-500">
+              <div className="p-1.5 bg-emerald-500/10 rounded-lg">
+                <Mic size={18} />
+              </div>
+              <h2 className="font-bold uppercase tracking-wider text-xs">信號解碼模擬器</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-6">
+              <button onClick={simulateReceive} disabled={isReceiving} className="bg-slate-950 border border-slate-800 hover:border-emerald-500/30 hover:bg-slate-900 disabled:opacity-50 py-4 rounded-xl font-bold flex flex-col items-center gap-2 transition-all active:scale-95">
+                <Mic size={20} className="text-emerald-500" />
+                <span className="text-xs">聲頻偵測</span>
+              </button>
+              <button onClick={simulateReceive} disabled={isReceiving} className="bg-slate-950 border border-slate-800 hover:border-emerald-500/30 hover:bg-slate-900 disabled:opacity-50 py-4 rounded-xl font-bold flex flex-col items-center gap-2 transition-all active:scale-95">
+                <Sun size={20} className="text-emerald-500" />
+                <span className="text-xs">光感偵測</span>
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 shadow-inner">
+                <label className="block text-[10px] font-black text-slate-600 uppercase mb-2 tracking-widest">接收 Morse</label>
+                <div className="font-mono text-sm min-h-[24px] text-slate-300 break-all tracking-widest">
+                  {rxMorse || <span className="opacity-20 italic">待輸入信號...</span>}
+                </div>
+              </div>
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 shadow-inner">
+                <label className="block text-[10px] font-black text-slate-600 uppercase mb-2 tracking-widest">即時譯文</label>
+                <div className="font-bold min-h-[24px] text-emerald-500">
+                  {rxText || <span className="opacity-20 italic text-slate-700">等待解碼結果...</span>}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <footer className="pt-12 pb-6 text-center">
+            <div className="flex items-center justify-center gap-1.5 text-slate-600 mb-3">
+               <Info size={14} />
+               <p className="text-[11px] font-medium italic">此工具僅供教學與通訊演示使用</p>
+            </div>
+            <p className="text-[10px] font-black text-slate-800 tracking-[0.2em] uppercase">© 2026 SKWSCOUT. PROTOCOL 1.4.0</p>
+          </footer>
+        </div>
       </div>
-      <p class="note">
-        ※ Android 如出現「未知來源」提示，請先允許安裝後再執行。<br/>
-        ※ 目前此頁為下載入口頁，Web 互動版尚未上線。
-      </p>
-    </section>
-    <div class="footer">© 2026 SKWSCOUT. All rights reserved.</div>
-  </main>
-</body>
-</html>
+    </div>
+  );
+}
+
+function Toggle({ label, active, onChange, icon, disabled = false }) {
+  return (
+    <button
+      disabled={disabled}
+      onClick={() => onChange(!active)}
+      className={`flex items-center justify-between p-3.5 rounded-xl transition-all border ${
+        disabled ? 'opacity-20 grayscale cursor-not-allowed border-transparent' :
+        active ? 'bg-blue-500/5 border-blue-500/30 text-blue-400 shadow-inner' : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-700'
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <div className={active ? 'text-blue-500' : 'text-slate-600'}>
+          {icon}
+        </div>
+        <span className="font-bold text-xs uppercase tracking-wider">{label}</span>
+      </div>
+      <div className={`w-9 h-4 rounded-full relative transition-colors ${active ? 'bg-blue-600' : 'bg-slate-800'}`}>
+        <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${active ? 'left-5.5' : 'left-0.5'}`} />
+      </div>
+    </button>
+  );
+}

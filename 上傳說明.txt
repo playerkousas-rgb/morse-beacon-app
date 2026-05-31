@@ -1,0 +1,14 @@
+這個資料夾只包含本次需要上傳到 GitHub 的檔案：
+
+1. index.html
+2. sw.js
+3. assets/
+
+使用方式：
+- 解壓縮 zip
+- 到 GitHub repo: https://github.com/playerkousas-rgb/morse-beacon-app
+- 點 Add file -> Upload files
+- 把解壓後資料夾內的 index.html、sw.js、assets 資料夾拖進去
+- Commit changes
+
+不要把 zip 本身上傳到網站專案，請上傳解壓後的檔案/資料夾。

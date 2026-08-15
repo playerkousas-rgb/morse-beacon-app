@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0b1220">
-    <title>SKW Morse 發訊器</title>
+    <title>Scout Morse 發訊器</title>
 
     <!-- PWA -->
     <link rel="manifest" href="manifest.webmanifest">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="SKW Morse">
+    <meta name="apple-mobile-web-app-title" content="Scout Morse">
     <link rel="apple-touch-icon" href="icon-192.png">
 
     <link rel="stylesheet" href="assets/css/tailwind.min.css">
@@ -64,6 +64,16 @@
         .pill { background:#0b1220; border:1px solid #1e293b; }
         @keyframes pulse-ring { 0%{box-shadow:0 0 0 0 rgba(37,99,235,.5)} 70%{box-shadow:0 0 0 14px rgba(37,99,235,0)} 100%{box-shadow:0 0 0 0 rgba(37,99,235,0)} }
         .listening { animation: pulse-ring 1.5s infinite; }
+        /* ===== 手機友善強化 ===== */
+        html { -webkit-text-size-adjust: 100%; }
+        * { -webkit-tap-highlight-color: transparent; }
+        button, select, input, textarea { font-family: inherit; }
+        button, .speed-chip, .tab-btn { touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+        textarea, select, input { font-size: 16px; } /* 避免 iOS 聚焦自動放大 */
+        body { padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px)) !important; }
+        nav.fixed { padding-bottom: env(safe-area-inset-bottom, 0px) !important; }
+        #manualKey { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+        .freq-chip.active { background-color: var(--accent); color: white; box-shadow: 0 0 15px rgba(37,99,235,.4); }
     </style>
 </head>
 <body class="p-4 pb-28">
@@ -72,7 +82,7 @@
         <!-- Header -->
         <header class="glass-card p-6 rounded-2xl shadow-xl flex items-center justify-between">
             <div>
-                <h1 class="text-3xl font-extrabold tracking-tight text-white">SKW Morse</h1>
+                <h1 class="text-3xl font-extrabold tracking-tight text-white">Scout Morse</h1>
                 <p class="text-[#9fb0d6] text-sm mt-1 font-medium italic">Signal Beacon &amp; Decoder</p>
             </div>
             <button id="installBtn" class="hidden bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-xl">
@@ -118,6 +128,17 @@
                         <button onclick="setWPM(25)" class="speed-chip px-4 py-2 rounded-full font-bold text-xs">25</button>
                     </div>
                 </div>
+                <div class="mt-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-sm font-bold text-slate-300">頻道頻率 (Hz)</label>
+                        <span class="freqDisp text-xs font-mono text-blue-400 font-bold">750 Hz</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="setFreq(750)" data-freq="750" class="freq-chip speed-chip px-4 py-2 rounded-full font-bold text-xs active">750</button>
+                        <button onclick="setFreq(1000)" data-freq="1000" class="freq-chip speed-chip px-4 py-2 rounded-full font-bold text-xs">1000</button>
+                        <button onclick="setFreq(1500)" data-freq="1500" class="freq-chip speed-chip px-4 py-2 rounded-full font-bold text-xs">1500</button>
+                    </div>
+                </div>
                 <div class="space-y-4 border-t border-slate-800 pt-4">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
@@ -139,7 +160,7 @@
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center"><i class="fa-solid fa-volume-high text-green-500 text-sm"></i></div>
-                            <span class="text-sm font-semibold">喇叭蜂鳴 (750Hz)</span>
+                            <span class="text-sm font-semibold" id="buzzerLabel">喇叭蜂鳴 (750Hz)</span>
                         </div>
                         <div class="relative inline-block w-10 h-5"><input type="checkbox" id="audioOn" checked class="toggle-checkbox absolute appearance-none w-10 h-5 bg-slate-700 rounded-full cursor-pointer transition-colors outline-none"></div>
                     </div>
@@ -151,6 +172,27 @@
                         <div class="relative inline-block w-10 h-5"><input type="checkbox" id="vibrateOn" checked class="toggle-checkbox absolute appearance-none w-10 h-5 bg-slate-700 rounded-full cursor-pointer transition-colors outline-none"></div>
                     </div>
                 </div>
+            </section>
+
+            <section class="glass-card p-5 rounded-2xl shadow-sm space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center"><i class="fa-solid fa-rotate text-cyan-500 text-sm"></i></div>
+                        <span class="text-sm font-semibold">循環發送 (Beacon)</span>
+                    </div>
+                    <div class="relative inline-block w-10 h-5"><input type="checkbox" id="loopOn" class="toggle-checkbox absolute appearance-none w-10 h-5 bg-slate-700 rounded-full cursor-pointer transition-colors outline-none"></div>
+                </div>
+                <div id="loopGapBox" style="display:none" class="flex items-center justify-between">
+                    <span class="text-sm font-semibold text-slate-300">重複間隔</span>
+                    <select id="loopGap" class="bg-[#0f172a] border border-slate-700 rounded-lg text-white text-sm px-3 py-2">
+                        <option value="1">1 秒</option>
+                        <option value="2" selected>2 秒</option>
+                        <option value="3">3 秒</option>
+                        <option value="5">5 秒</option>
+                        <option value="10">10 秒</option>
+                    </select>
+                </div>
+                <p id="sendEstimate" class="text-[11px] text-slate-500 text-center">單次發送約 — 秒</p>
             </section>
 
             <div class="flex gap-3">
@@ -172,12 +214,15 @@
         <div id="page-decode" class="page space-y-4">
             <!-- Mode switch -->
             <section class="glass-card p-2 rounded-2xl shadow-sm">
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-3 gap-2">
                     <button id="modeSound" onclick="setDecodeMode('sound')" class="py-3 rounded-xl font-bold text-sm bg-blue-600 text-white flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-microphone"></i> 聲音解碼
+                        <i class="fa-solid fa-microphone"></i> 聲音
                     </button>
                     <button id="modeLight" onclick="setDecodeMode('light')" class="py-3 rounded-xl font-bold text-sm bg-[#1e293b] text-slate-300 flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-lightbulb"></i> 光源解碼
+                        <i class="fa-solid fa-lightbulb"></i> 光源
+                    </button>
+                    <button id="modeManual" onclick="setDecodeMode('manual')" class="py-3 rounded-xl font-bold text-sm bg-[#1e293b] text-slate-300 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-hand-pointer"></i> 手動
                     </button>
                 </div>
             </section>
@@ -205,6 +250,16 @@
                     </div>
                 </div>
 
+                <!-- frequency channel -->
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold text-slate-400">頻道頻率</label>
+                    <div class="flex gap-1">
+                        <button onclick="setFreq(750)" data-freq="750" class="freq-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs active">750</button>
+                        <button onclick="setFreq(1000)" data-freq="1000" class="freq-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">1000</button>
+                        <button onclick="setFreq(1500)" data-freq="1500" class="freq-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">1500</button>
+                    </div>
+                </div>
+
                 <!-- sensitivity -->
                 <div>
                     <div class="flex justify-between items-center mb-1">
@@ -214,6 +269,15 @@
                     <input id="sensSlider" type="range" min="0" max="100" value="50" class="w-full accent-blue-500">
                     <p class="text-[10px] text-slate-500 mt-1">向左 = 較靈敏(易誤判)，向右 = 較嚴格(需更強訊號)。自動門檻會持續校正背景雜訊。</p>
                 </div>
+            </section>
+
+            <!-- 手動拍打鍵 -->
+            <section id="manualKeySection" class="glass-card p-5 rounded-2xl shadow-sm space-y-3 hidden">
+                <label class="text-sm font-bold text-slate-300"><i class="fa-solid fa-hand-pointer text-cyan-400 mr-1"></i>手動拍打鍵</label>
+                <p class="text-[11px] text-slate-500 leading-relaxed">按住 = 發訊號，放開 = 停止。短按 = 點(·)，長按 = 劃(−)；自動依停頓分段成字母與單字。</p>
+                <button id="manualKey" class="w-full h-44 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white font-extrabold text-2xl transition-transform active:scale-[0.98]">
+                    <i class="fa-solid fa-circle-dot mr-2"></i>按住發送
+                </button>
             </section>
 
             <!-- Decoded output -->
@@ -226,8 +290,9 @@
                 <label class="block text-sm font-bold text-slate-300 pt-1">解碼文字</label>
                 <div id="decodedText" class="p-4 rounded-xl bg-[#0f172a] border border-slate-700 break-words font-bold text-lg min-h-[60px] text-white">等待訊號…</div>
                 <div class="flex gap-2">
-                    <button onclick="copyDecoded()" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg"><i class="fa-regular fa-copy mr-1"></i>複製文字</button>
-                    <button id="autoWpm" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg">估算速度: <span id="estWpm">—</span></button>
+                    <button onclick="copyDecoded()" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg"><i class="fa-regular fa-copy mr-1"></i>複製</button>
+                    <button onclick="shareDecoded()" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg"><i class="fa-solid fa-share-nodes mr-1"></i>分享</button>
+                    <button id="autoWpm" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg">速度 <span id="estWpm">—</span></button>
                 </div>
             </section>
 
@@ -235,16 +300,16 @@
                 <i class="fa-solid fa-ear-listen"></i> 開始接收
             </button>
             <p id="decodeHint" class="text-[11px] text-slate-500 text-center px-4 leading-relaxed">
-                聲音解碼：對準對方喇叭，鎖定 750Hz 提示音（Goertzel 精準鎖頻）。<br>光源解碼：把後鏡頭對準閃光來源。先按「開始接收」會請求權限。
+                聲音解碼：對準對方喇叭，鎖定所選頻率提示音（Goertzel 精準鎖頻）。<br>光源解碼：把後鏡頭對準閃光來源。先按「開始接收」會請求權限。
             </p>
 
             <!-- 錄音檔離線解碼 -->
             <section class="glass-card p-5 rounded-2xl shadow-sm space-y-3">
                 <div class="flex items-center justify-between">
                     <label class="text-sm font-bold text-slate-300"><i class="fa-solid fa-file-audio text-cyan-400 mr-1"></i>音檔離線解碼</label>
-                    <span class="text-[10px] text-slate-500">750Hz · 自動估速</span>
+                    <span class="text-[10px] text-slate-500">所選頻率 · 自動估速</span>
                 </div>
-                <p class="text-[11px] text-slate-500 leading-relaxed">上傳一段含 750Hz 蜂鳴的錄音（wav/mp3/m4a），離線解出內容。</p>
+                <p class="text-[11px] text-slate-500 leading-relaxed">上傳一段含所選頻率蜂鳴的錄音（wav/mp3/m4a），離線解出內容。</p>
                 <label class="block">
                     <input id="audioFile" type="file" accept="audio/*" class="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white file:font-bold file:cursor-pointer">
                 </label>
@@ -274,7 +339,7 @@
                     <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-graduation-cap text-blue-400"></i> 摩斯碼速查 / 教學</h2>
                     <span class="text-[10px] text-slate-500">點一下會發聲</span>
                 </div>
-                <p class="text-[11px] text-slate-500">點任一格子會以 750Hz 播放該字元，並可看到點劃。適合教學與練習。</p>
+                <p class="text-[11px] text-slate-500">點任一格子會以所選頻率播放該字元，並可看到點劃。適合教學與練習。</p>
                 <div>
                     <div class="text-xs font-bold text-slate-400 mb-2">字母</div>
                     <div id="refLetters" class="grid grid-cols-4 gap-2"></div>
@@ -332,12 +397,16 @@
                 <p class="text-[10px] text-slate-500 leading-relaxed pt-1">※ 需符合：HTTPS、後鏡頭具 LED、且使用者允許相機權限。不支援時請改用「螢幕閃光」。</p>
             </section>
             <section class="glass-card p-6 rounded-2xl shadow-sm space-y-3">
-                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sparkles text-yellow-400"></i> V3.0 新功能</h2>
+                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sparkles text-yellow-400"></i> V4.0 新功能</h2>
                 <ul class="text-xs text-slate-400 space-y-1.5 list-disc pl-4 leading-relaxed">
+                    <li><b>循環發送 (Beacon)</b>：訊號可重複播送，並自訂間隔秒數，適合當信標。</li>
+                    <li><b>頻道頻率</b>：750 / 1000 / 1500Hz 三頻道，發送與接收同步，不同隊伍可分流。</li>
+                    <li><b>手動拍打鍵</b>：按住大按鈕手動打摩斯，即時解碼，適合練習與人工收發。</li>
+                    <li><b>分享/匯出</b>：解碼結果一鍵複製或分享出去。</li>
                     <li><b>Goertzel 精準鎖頻</b>：聲音解碼改用單頻演算法，更準、更抗噪。</li>
-                    <li><b>解碼歷史</b>：每次接收自動存檔，可複製、刪除（在「接收解碼」頁下方）。</li>
+                    <li><b>解碼歷史</b>：每次接收自動存檔，可複製、分享、刪除。</li>
                     <li><b>速查表/教學</b>：點 A–Z/0–9 聽聲學摩斯（在「速查/設定」頁）。</li>
-                    <li><b>音檔離線解碼</b>：上傳含 750Hz 蜂鳴的錄音直接解碼。</li>
+                    <li><b>音檔離線解碼</b>：上傳含所選頻率蜂鳴的錄音直接解碼。</li>
                     <li><b>快速短語</b>：SOS/OK/HELP 一鍵填入發送。</li>
                     <li><b>主題與字級</b>：深/淺色、字體大小，設定會記住。</li>
                 </ul>
@@ -352,12 +421,12 @@
                 </ul>
             </section>
             <footer class="text-center py-4">
-                <p class="text-[10px] font-bold text-slate-600 tracking-widest uppercase">COPYRIGHT © 2026 SKWSCOUT · System V3.0</p>
+                <p class="text-[10px] font-bold text-slate-600 tracking-widest uppercase">COPYRIGHT © 2026 SCOUT SYSTEM · V4.0</p>
             </footer>
         </div>
 
         <!-- 全頁版權 -->
-        <p class="text-center text-[10px] font-bold text-slate-600 tracking-widest uppercase pt-2">COPYRIGHT © 2026 SKWSCOUT</p>
+        <p class="text-center text-[10px] font-bold text-slate-600 tracking-widest uppercase pt-2">COPYRIGHT © 2026 SCOUT SYSTEM</p>
     </div>
 
     <!-- ============ BOTTOM TAB BAR ============ -->
@@ -423,6 +492,8 @@
        發送 (保留原功能)
     ============================================================ */
     let currentWPM = 15, unitMs = 80, isTransmitting = false, stopFlag = false, videoTrack = null;
+    let toneFreq = 750;          // 蜂鳴頻率（可選頻道），發送與接收共用
+    const FREQ_BLOCK = 1024;     // 聲音解碼區塊大小
     const messageInput = document.getElementById('messageInput');
     const morsePreview = document.getElementById('morsePreview');
     const flashOverlay = document.getElementById('flashOverlay');
@@ -437,10 +508,41 @@
     }
     messageInput.addEventListener('input', () => {
         morsePreview.innerText = textToMorse(messageInput.value) || 'WAITING...';
+        updateEstimate();
     });
     function setWPM(v){
         currentWPM = v; unitMs = Math.round(1200 / v); wpmDisplay.innerText = v + ' WPM';
         document.querySelectorAll('#speedSelector .speed-chip').forEach(btn => btn.classList.toggle('active', parseInt(btn.innerText) === v));
+        updateEstimate();
+    }
+    function setFreq(hz){
+        toneFreq = hz;
+        document.querySelectorAll('.freq-chip').forEach(c => c.classList.toggle('active', parseInt(c.dataset.freq) === hz));
+        document.querySelectorAll('.freqDisp').forEach(el => el.innerText = hz + ' Hz');
+        const bl = document.getElementById('buzzerLabel');
+        if (bl) bl.innerText = '喇叭蜂鳴 (' + hz + 'Hz)';
+        // 接收中即時重新鎖頻
+        if (decAudioCtx) initGoertzel(decAudioCtx.sampleRate, FREQ_BLOCK);
+    }
+    function updateEstimate(){
+        const el = document.getElementById('sendEstimate');
+        if (!el) return;
+        const msg = messageInput.value.trim();
+        if (!msg){ el.innerText = '單次發送約 — 秒'; return; }
+        const words = msg.toUpperCase().split(/\s+/);
+        let total = 0;
+        words.forEach((word, wi) => {
+            word.split('').forEach((l, li) => {
+                const code = MORSE_MAP[l]; if (!code) return;
+                code.split('').forEach((s, si) => {
+                    total += (s === '.' ? unitMs : unitMs*3);
+                    if (si < code.length-1) total += unitMs;
+                });
+                if (li < word.length-1) total += unitMs*3;
+            });
+            if (wi < words.length-1) total += unitMs*7;
+        });
+        el.innerText = '單次發送約 ' + (total/1000).toFixed(1) + ' 秒';
     }
     async function initTorch(){
         if (!document.getElementById('torchOn').checked) return null;
@@ -459,7 +561,7 @@
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') await audioCtx.resume();
         const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-        osc.frequency.value = 750;
+        osc.frequency.value = toneFreq;
         gain.gain.setValueAtTime(0, audioCtx.currentTime);
         gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.005);
         gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + (duration/1000) - 0.005);
@@ -484,21 +586,33 @@
             if (wi < words.length-1) events.push({ type:'off', d: unitMs*7 });
         });
         isTransmitting = true; stopFlag = false; updateUIState(true);
-        for (let i=0; i<events.length; i++){
-            if (stopFlag) break;
-            const e = events[i];
-            progressText.innerText = (i+1) + '/' + events.length;
-            if (e.type === 'on'){
-                if (document.getElementById('screenOn').checked) flashOverlay.style.display = 'block';
-                if (videoTrack) setTorch(true, videoTrack);
-                if (document.getElementById('vibrateOn').checked && navigator.vibrate) navigator.vibrate(e.d);
-                if (document.getElementById('audioOn').checked) await playTone(e.d);
-                else await new Promise(r => setTimeout(r, e.d));
-            } else {
-                flashOverlay.style.display = 'none';
-                if (videoTrack) setTorch(false, videoTrack);
-                await new Promise(r => setTimeout(r, e.d));
+        const loopOn = document.getElementById('loopOn').checked;
+        const loopGap = (parseInt(document.getElementById('loopGap').value) || 2) * 1000;
+        let round = 0;
+        while (!stopFlag){
+            if (round > 0){
+                progressText.innerText = '間隔 ' + (loopGap/1000) + ' 秒…';
+                await new Promise(r => setTimeout(r, loopGap));
+                if (stopFlag) break;
             }
+            round++;
+            for (let i=0; i<events.length; i++){
+                if (stopFlag) break;
+                const e = events[i];
+                progressText.innerText = (loopOn ? '第 ' + round + ' 次 · ' : '') + (i+1) + '/' + events.length;
+                if (e.type === 'on'){
+                    if (document.getElementById('screenOn').checked) flashOverlay.style.display = 'block';
+                    if (videoTrack) setTorch(true, videoTrack);
+                    if (document.getElementById('vibrateOn').checked && navigator.vibrate) navigator.vibrate(e.d);
+                    if (document.getElementById('audioOn').checked) await playTone(e.d);
+                    else await new Promise(r => setTimeout(r, e.d));
+                } else {
+                    flashOverlay.style.display = 'none';
+                    if (videoTrack) setTorch(false, videoTrack);
+                    await new Promise(r => setTimeout(r, e.d));
+                }
+            }
+            if (!loopOn) break;
         }
         stopTransmission();
     }
@@ -552,9 +666,17 @@
     function setDecodeMode(mode){
         if (listening) toggleListen(); // 切換模式先停
         decodeMode = mode;
-        document.getElementById('modeSound').className = 'py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 ' + (mode==='sound' ? 'bg-blue-600 text-white' : 'bg-[#1e293b] text-slate-300');
-        document.getElementById('modeLight').className = 'py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 ' + (mode==='light' ? 'bg-blue-600 text-white' : 'bg-[#1e293b] text-slate-300');
+        const cls = on => 'py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 ' + (on ? 'bg-blue-600 text-white' : 'bg-[#1e293b] text-slate-300');
+        document.getElementById('modeSound').className = cls(mode==='sound');
+        document.getElementById('modeLight').className = cls(mode==='light');
+        document.getElementById('modeManual').className = cls(mode==='manual');
         camPreview.classList.toggle('hidden', mode !== 'light');
+        document.getElementById('manualKeySection').classList.toggle('hidden', mode !== 'manual');
+        decodeHint.innerHTML = mode === 'sound'
+            ? '聲音解碼：對準對方喇叭，鎖定所選頻率提示音（Goertzel 精準鎖頻）。'
+            : mode === 'light'
+            ? '光源解碼：把後鏡頭對準閃光來源。先按「開始接收」會請求權限。'
+            : '手動拍打：按住按鈕 = 發訊號，放開 = 停止。短按=點，長按=劃，自動分段解碼。';
     }
 
     function clearDecode(){
@@ -566,6 +688,12 @@
         const t = decodedOut.trim();
         if (!t){ customAlert('目前沒有可複製的文字'); return; }
         navigator.clipboard?.writeText(t).then(()=>customAlert('已複製：' + t)).catch(()=>customAlert('複製失敗，請手動選取'));
+    }
+    function shareDecoded(){
+        const t = decodedOut.trim();
+        if (!t){ customAlert('目前沒有可分享的文字'); return; }
+        if (navigator.share){ navigator.share({ title:'Scout Morse 解碼結果', text:t }).catch(()=>{}); }
+        else copyDecoded();
     }
 
     // 靈敏度滑桿：影響門檻乘數
@@ -580,7 +708,8 @@
         if (listening){ stopListen(); return; }
         try {
             if (decodeMode === 'sound') await startSoundDecode();
-            else await startLightDecode();
+            else if (decodeMode === 'light') await startLightDecode();
+            else startManualDecode();
         } catch(e){
             console.error(e);
             customAlert('無法啟動：' + (e.message || '請確認已授權麥克風/相機，且使用 HTTPS。'));
@@ -604,17 +733,16 @@
         if (on){ decodedText.innerText = decodedOut.trim() || '聆聽中…'; }
     }
 
-    /* ---------- 聲音解碼（Goertzel 演算法：精準鎖 750Hz、抗噪）----------
+    /* ---------- 聲音解碼（Goertzel 演算法：精準鎖所選頻率、抗噪）----------
        原理：對每一小段時域樣本，只計算「目標頻率」的能量（單一 bin 的 DFT），
        比 FFT 全頻譜更精準、運算量更小，對背景雜訊更穩健。
        同時計算寬頻總能量做正規化，得到「目標頻率佔比」當作訊號強度。 */
     let scriptNode = null, gSrc = null, gBuf = null;
-    const TARGET_FREQ = 750;          // 與發送端蜂鳴一致
     let goCoeff = 0, goSr = 44100, goN = 0;
 
     function initGoertzel(sampleRate, blockSize){
         goSr = sampleRate; goN = blockSize;
-        const k = Math.round((blockSize * TARGET_FREQ) / sampleRate);
+        const k = Math.round((blockSize * toneFreq) / sampleRate);
         const omega = (2 * Math.PI * k) / blockSize;
         goCoeff = 2 * Math.cos(omega);
     }
@@ -638,10 +766,9 @@
         decAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (decAudioCtx.state === 'suspended') await decAudioCtx.resume();
         gSrc = decAudioCtx.createMediaStreamSource(mediaStream);
-        const BLOCK = 1024;
-        initGoertzel(decAudioCtx.sampleRate, BLOCK);
+        initGoertzel(decAudioCtx.sampleRate, FREQ_BLOCK);
         // ScriptProcessor 在所有手機瀏覽器都可用（AudioWorklet 相容性較差）
-        scriptNode = decAudioCtx.createScriptProcessor(BLOCK, 1, 1);
+        scriptNode = decAudioCtx.createScriptProcessor(FREQ_BLOCK, 1, 1);
         resetDecoderState();
         setListeningUI(true);
         scriptNode.onaudioprocess = (e) => {
@@ -694,6 +821,36 @@
         const b = frameBrightness();
         processLevel(b);
         rafId = requestAnimationFrame(lightLoop);
+    }
+
+    /* ---------- 手動拍打解碼（重複使用同一套狀態機） ---------- */
+    let keyOn = false, keyDownAt = 0, manualTimer = null;
+    function startManualDecode(){
+        resetDecoderState();
+        setListeningUI(true);
+        if (manualTimer) clearInterval(manualTimer);
+        manualTimer = setInterval(() => {
+            if (!listening) return;
+            if (!keyOn) maybeFlushOnSilence(performance.now() - stateStart);
+        }, 100);
+    }
+    function manualKeyDown(){
+        if (decodeMode !== 'manual') return;
+        if (!listening) startManualDecode();
+        keyOn = true; keyDownAt = performance.now();
+        signalState.innerText = '● 訊號';
+        signalState.classList.add('text-cyan-400');
+        signalState.classList.remove('text-green-400');
+    }
+    function manualKeyUp(){
+        if (!keyOn) return;
+        keyOn = false;
+        const dur = performance.now() - keyDownAt;
+        if (dur >= 25) handleSegment(true, dur); // 忽略極短誤觸
+        stateStart = performance.now();
+        signalState.innerText = '聆聽中';
+        signalState.classList.remove('text-cyan-400');
+        signalState.classList.add('text-green-400');
     }
 
     /* ---------- 共用：訊號 -> 摩斯狀態機 ---------- */
@@ -814,6 +971,8 @@
     function stopListen(){
         if (rafId) cancelAnimationFrame(rafId);
         rafId = null;
+        if (manualTimer){ clearInterval(manualTimer); manualTimer = null; }
+        keyOn = false;
         // 結束時把殘留字母輸出，並存入歷史
         flushLetter();
         commitHistory();
@@ -861,7 +1020,7 @@
     /* ============================================================
        解碼歷史（localStorage）
     ============================================================ */
-    const HKEY = 'skw_morse_history_v1';
+    const HKEY = 'scout_morse_history_v1';
     function loadHistory(){
         try { return JSON.parse(localStorage.getItem(HKEY) || '[]'); } catch(e){ return []; }
     }
@@ -894,6 +1053,11 @@
         const arr = loadHistory(); const it = arr[idx]; if(!it) return;
         navigator.clipboard?.writeText(it.text).then(()=>customAlert('已複製：'+it.text));
     }
+    function shareHistory(idx){
+        const arr = loadHistory(); const it = arr[idx]; if(!it) return;
+        if (navigator.share){ navigator.share({ title:'Scout Morse', text:it.text }).catch(()=>{}); }
+        else copyHistory(idx);
+    }
     function renderHistory(){
         const list = document.getElementById('historyList');
         const empty = document.getElementById('historyEmpty');
@@ -908,6 +1072,7 @@
                 <div class="flex items-center justify-between mb-1">
                     <span class="text-[10px] text-slate-500">${it.mode} · ${ts} · ${it.wpm||'?'}wpm</span>
                     <span class="flex gap-2">
+                        <button onclick="shareHistory(${i})" class="text-[10px] text-slate-400 hover:text-white"><i class="fa-solid fa-share-nodes"></i></button>
                         <button onclick="copyHistory(${i})" class="text-[10px] text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i></button>
                         <button onclick="deleteHistory(${i})" class="text-[10px] text-slate-400 hover:text-red-400"><i class="fa-solid fa-xmark"></i></button>
                     </span>
@@ -919,7 +1084,7 @@
     }
 
     /* ============================================================
-       摩斯碼速查表 / 教學（點擊播放 750Hz）
+       摩斯碼速查表 / 教學（點擊以所選頻率播放）
     ============================================================ */
     async function playMorseString(code){
         for (let i=0;i<code.length;i++){
@@ -993,13 +1158,13 @@
         if (sym){ out += (REV_MORSE[sym]||'?'); }
         out = out.trim();
         fm.innerText = textToMorse(out) || '—';
-        ft.innerText = out || '（無法辨識，請確認音檔含清楚的 750Hz 蜂鳴）';
+        ft.innerText = out || '（無法辨識，請確認音檔含清楚的 ' + toneFreq + 'Hz 蜂鳴）';
     }
 
     /* ============================================================
        外觀設定（主題 + 字級，存 localStorage）
     ============================================================ */
-    const PREF = 'skw_morse_pref_v1';
+    const PREF = 'scout_morse_pref_v1';
     function loadPref(){ try { return JSON.parse(localStorage.getItem(PREF)||'{}'); } catch(e){ return {}; } }
     function savePref(p){ try { localStorage.setItem(PREF, JSON.stringify(p)); } catch(e){} }
     function applyTheme(theme){
@@ -1095,7 +1260,35 @@
     /* ============================================================
        初始化
     ============================================================ */
+    // 舊版資料遷移（相容舊版儲存鍵）
+    (function migrateLegacy(){
+        try {
+            if (localStorage.getItem('scout_morse_history_v1') === null && localStorage.getItem('skw_morse_history_v1') !== null){
+                localStorage.setItem('scout_morse_history_v1', localStorage.getItem('skw_morse_history_v1'));
+            }
+            if (localStorage.getItem('scout_morse_pref_v1') === null && localStorage.getItem('skw_morse_pref_v1') !== null){
+                localStorage.setItem('scout_morse_pref_v1', localStorage.getItem('skw_morse_pref_v1'));
+            }
+        } catch(e){}
+    })();
+
+    // 循環發送間隔顯示
+    const loopOnEl = document.getElementById('loopOn');
+    const loopGapBoxEl = document.getElementById('loopGapBox');
+    if (loopOnEl && loopGapBoxEl){
+        loopOnEl.addEventListener('change', () => { loopGapBoxEl.style.display = loopOnEl.checked ? 'flex' : 'none'; });
+    }
+    // 手動拍打鍵事件
+    const manualKeyEl = document.getElementById('manualKey');
+    if (manualKeyEl){
+        manualKeyEl.addEventListener('pointerdown', e => { e.preventDefault(); manualKeyDown(); });
+        manualKeyEl.addEventListener('pointerup', manualKeyUp);
+        manualKeyEl.addEventListener('pointerleave', manualKeyUp);
+        manualKeyEl.addEventListener('pointercancel', manualKeyUp);
+    }
+
     setWPM(15);
+    setFreq(750);
     messageInput.dispatchEvent(new Event('input'));
     setDecodeMode('sound');
     buildRef();

@@ -1,7 +1,7 @@
 {
-  "name": "SKW Morse 發訊器",
-  "short_name": "SKW Morse",
-  "description": "摩斯密碼發送與接收解碼（聲音 / 光源）",
+  "name": "Scout Morse 發訊器",
+  "short_name": "Scout Morse",
+  "description": "摩斯密碼發送與接收解碼（聲音 / 光源 / 手動拍打）",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

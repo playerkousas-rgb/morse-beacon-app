@@ -1,7 +1,7 @@
-/* SKW Morse Service Worker
+/* Scout Morse Service Worker
    策略：App Shell 與本地 CSS / 字型資源預快取 + 線上優先回退快取。
    每次改版請更新 CACHE 版本字串。 */
-const CACHE = 'skw-morse-v3.1.1-local-assets';
+const CACHE = 'scout-morse-v4.0.0-local-assets';
 const ASSETS = [
   './',
   './index.html',

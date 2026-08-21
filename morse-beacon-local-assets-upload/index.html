@@ -74,6 +74,27 @@
         nav.fixed { padding-bottom: env(safe-area-inset-bottom, 0px) !important; }
         #manualKey { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         .freq-chip.active { background-color: var(--accent); color: white; box-shadow: 0 0 15px rgba(37,99,235,.4); }
+        /* ===== 遊戲頁 ===== */
+        .lamp-bulb { width:92px; height:92px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+            font-size:44px; color:#475569; background:#0b1220; border:2px solid #1e293b; transition: all .04s; }
+        .lamp-bulb.on { color:#fde047; background:#713f12; border-color:#facc15; box-shadow:0 0 60px 18px rgba(250,204,21,.55); }
+        .wave-box { width:92px; height:92px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+            font-size:40px; color:#475569; background:#0b1220; border:2px solid #1e293b; }
+        .wave-box.on { color:#22d3ee; border-color:#22d3ee; animation: pulse-ring .6s infinite; }
+        .ans-btn { background:#1e293b; border:2px solid #334155; color:#fff; font-weight:800; font-size:1.5rem;
+            padding:18px 0; border-radius:16px; transition: all .12s; touch-action: manipulation; }
+        .ans-btn:active { transform: scale(.96); }
+        .ans-btn.correct { background:#14532d; border-color:#22c55e; color:#86efac; }
+        .ans-btn.wrong { background:#450a0a; border-color:#ef4444; color:#fca5a5; }
+        .ans-btn.dim { opacity:.35; }
+        .stage-card { text-align:left; background:#1e293b; border:1px solid #334155; border-radius:14px; padding:10px 12px;
+            transition: all .15s; color:#e8eefc; }
+        .stage-card:not(:disabled) { cursor:pointer; }
+        .stage-card:not(:disabled):active { transform: scale(.97); }
+        .stage-card.locked { opacity:.45; }
+        .stage-stars { color:#facc15; letter-spacing:2px; }
+        body.theme-light .ans-btn { background:#e2e8f0; color:#0b1220; border-color:#cbd5e1; }
+        body.theme-light .stage-card { background:#f1f5f9; border-color:#cbd5e1; color:#0b1220; }
     </style>
 </head>
 <body class="p-4 pb-28">
@@ -260,6 +281,19 @@
                     </div>
                 </div>
 
+                <!-- 對方速度（解碼種子） -->
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold text-slate-400">對方速度</label>
+                    <div class="flex gap-1 flex-wrap justify-end">
+                        <button onclick="setRecvWPM(0)" data-rwpm="0" class="rwpm-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs active">自動</button>
+                        <button onclick="setRecvWPM(8)" data-rwpm="8" class="rwpm-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">8</button>
+                        <button onclick="setRecvWPM(12)" data-rwpm="12" class="rwpm-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">12</button>
+                        <button onclick="setRecvWPM(15)" data-rwpm="15" class="rwpm-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">15</button>
+                        <button onclick="setRecvWPM(20)" data-rwpm="20" class="rwpm-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">20</button>
+                        <button onclick="setRecvWPM(25)" data-rwpm="25" class="rwpm-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">25</button>
+                    </div>
+                </div>
+
                 <!-- sensitivity -->
                 <div>
                     <div class="flex justify-between items-center mb-1">
@@ -292,7 +326,7 @@
                 <div class="flex gap-2">
                     <button onclick="copyDecoded()" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg"><i class="fa-regular fa-copy mr-1"></i>複製</button>
                     <button onclick="shareDecoded()" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg"><i class="fa-solid fa-share-nodes mr-1"></i>分享</button>
-                    <button id="autoWpm" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg">速度 <span id="estWpm">—</span></button>
+                    <button id="autoWpm" onclick="reseedTiming();customAlert('已重新校正速度基準')" title="按此重新校正速度" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg">速度 <span id="estWpm">—</span></button>
                 </div>
             </section>
 
@@ -300,7 +334,7 @@
                 <i class="fa-solid fa-ear-listen"></i> 開始接收
             </button>
             <p id="decodeHint" class="text-[11px] text-slate-500 text-center px-4 leading-relaxed">
-                聲音解碼：對準對方喇叭，鎖定所選頻率提示音（Goertzel 精準鎖頻）。<br>光源解碼：把後鏡頭對準閃光來源。先按「開始接收」會請求權限。
+                聲音解碼：對準對方喇叭，鎖定所選頻率（V5 引擎：取樣時鐘計時＋雙門檻磁滯，長音不再漏）。<br>光源解碼：把後鏡頭對準閃光來源。先按「開始接收」會請求權限。
             </p>
 
             <!-- 錄音檔離線解碼 -->
@@ -328,6 +362,83 @@
                 </div>
                 <div id="historyList" class="space-y-2 max-h-72 overflow-y-auto"></div>
                 <p id="historyEmpty" class="text-[11px] text-slate-500 text-center py-2">尚無紀錄。完成一次接收（按停止）後會自動存檔。</p>
+            </section>
+        </div>
+
+        <!-- ============ PAGE: GAME (摩斯聽力特訓) ============ -->
+        <div id="page-game" class="page space-y-4">
+            <section class="glass-card p-5 rounded-2xl shadow-sm space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-gamepad text-pink-400"></i> 摩斯聽力特訓</h2>
+                    <span id="gameTotalStars" class="text-[11px] font-bold stage-stars"></span>
+                </div>
+                <p class="text-[11px] text-slate-500 leading-relaxed">聽一段電報音（或看信號燈），選出正確字元。共 8 大關卡 × 3 種難度，每關 10 題，答對 8 題即可解鎖下一關！</p>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">裝備</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="equipSound" onclick="setGameEquip('sound')" class="py-3 rounded-xl font-bold text-sm bg-blue-600 text-white flex items-center justify-center gap-2"><i class="fa-solid fa-tower-broadcast"></i> 電報音</button>
+                        <button id="equipLamp" onclick="setGameEquip('lamp')" class="py-3 rounded-xl font-bold text-sm bg-[#1e293b] text-slate-300 flex items-center justify-center gap-2"><i class="fa-solid fa-lightbulb"></i> 信號燈</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1">難度</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button id="diffEasy" onclick="setGameDiff('easy')" class="py-2 rounded-xl font-bold text-xs bg-blue-600 text-white">簡單<span class="block text-[9px] font-normal opacity-75">8WPM・顯示點劃</span></button>
+                        <button id="diffMed" onclick="setGameDiff('med')" class="py-2 rounded-xl font-bold text-xs bg-[#1e293b] text-slate-300">中等<span class="block text-[9px] font-normal opacity-75">12WPM・純聽音</span></button>
+                        <button id="diffHard" onclick="setGameDiff('hard')" class="py-2 rounded-xl font-bold text-xs bg-[#1e293b] text-slate-300">困難<span class="block text-[9px] font-normal opacity-75">18WPM・限時作答</span></button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 關卡選擇 -->
+            <section id="stageSelectBox" class="glass-card p-5 rounded-2xl shadow-sm space-y-3">
+                <div class="flex items-center justify-between">
+                    <label class="text-sm font-bold text-slate-300"><i class="fa-solid fa-map text-green-400 mr-1"></i>選擇關卡</label>
+                    <button onclick="resetGameProgress()" class="text-[10px] text-slate-500 hover:text-red-400"><i class="fa-solid fa-rotate-left mr-1"></i>重置進度</button>
+                </div>
+                <div id="stageGrid" class="grid grid-cols-2 gap-2"></div>
+            </section>
+
+            <!-- 遊戲進行 -->
+            <section id="gamePlayBox" class="glass-card p-5 rounded-2xl shadow-sm space-y-4 hidden">
+                <div class="flex items-center justify-between text-xs font-bold">
+                    <span id="gameQNum" class="text-slate-400">第 1 / 10 題</span>
+                    <span class="text-yellow-400"><i class="fa-solid fa-fire mr-1"></i><span id="gameStreak">0</span> 連勝</span>
+                    <span class="text-blue-400"><i class="fa-solid fa-star mr-1"></i><span id="gameScore">0</span> 分</span>
+                </div>
+                <div class="h-2 w-full rounded-full bg-[#0b1220] border border-slate-800 overflow-hidden">
+                    <div id="gameProg" class="meter-bar h-full bg-gradient-to-r from-pink-500 to-yellow-400" style="width:0%"></div>
+                </div>
+
+                <!-- 燈號 / 音波顯示 -->
+                <div class="flex flex-col items-center gap-2 py-1">
+                    <div id="lampBulb" class="lamp-bulb hidden"><i class="fa-solid fa-lightbulb"></i></div>
+                    <div id="waveBox" class="wave-box"><i class="fa-solid fa-volume-high"></i></div>
+                    <div id="hintCode" class="font-mono text-cyan-400 font-bold tracking-[0.3em] text-xl min-h-[28px]"></div>
+                    <button onclick="replayQuestion()" class="bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold px-4 py-2 rounded-lg"><i class="fa-solid fa-rotate-right mr-1"></i>再播一次</button>
+                    <div id="timerWrap" class="w-full hidden">
+                        <div class="h-2 w-full rounded-full bg-[#0b1220] border border-slate-800 overflow-hidden">
+                            <div id="timerBar" class="h-full bg-gradient-to-r from-green-400 to-red-500" style="width:100%; transition: width .1s linear;"></div>
+                        </div>
+                        <p class="text-[10px] text-slate-500 text-center mt-1">限時作答！</p>
+                    </div>
+                </div>
+
+                <div id="answerGrid" class="grid grid-cols-2 gap-2"></div>
+                <div id="gameFeedback" class="text-center text-sm font-bold min-h-[24px]"></div>
+                <button onclick="abortGame()" class="w-full text-[11px] text-slate-500 hover:text-red-400 py-1"><i class="fa-solid fa-flag mr-1"></i>結束本關</button>
+            </section>
+
+            <!-- 結算 -->
+            <section id="gameResultBox" class="glass-card p-6 rounded-2xl shadow-sm space-y-4 hidden text-center">
+                <h3 id="resultTitle" class="text-xl font-extrabold text-white"></h3>
+                <div id="resultStars" class="text-4xl tracking-widest"></div>
+                <p id="resultDetail" class="text-sm text-slate-300 font-bold"></p>
+                <p id="resultUnlock" class="text-xs text-yellow-400 font-bold"></p>
+                <div class="flex gap-2">
+                    <button onclick="replayStage()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-sm"><i class="fa-solid fa-rotate-right mr-1"></i>再玩一次</button>
+                    <button onclick="abortGame()" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 font-bold py-3 rounded-xl text-sm"><i class="fa-solid fa-map mr-1"></i>回關卡地圖</button>
+                </div>
             </section>
         </div>
 
@@ -397,8 +508,11 @@
                 <p class="text-[10px] text-slate-500 leading-relaxed pt-1">※ 需符合：HTTPS、後鏡頭具 LED、且使用者允許相機權限。不支援時請改用「螢幕閃光」。</p>
             </section>
             <section class="glass-card p-6 rounded-2xl shadow-sm space-y-3">
-                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sparkles text-yellow-400"></i> V4.0 新功能</h2>
+                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sparkles text-yellow-400"></i> V5.0 新功能</h2>
                 <ul class="text-xs text-slate-400 space-y-1.5 list-disc pl-4 leading-relaxed">
+                    <li><b>🆕 摩斯聽力特訓遊戲</b>：8 關卡 × 3 難度，電報音/信號燈雙裝備，連勝計分、限時作答，答對 8 題解鎖下一關（見「遊戲」頁）。</li>
+                    <li><b>🆕 聲音解碼引擎 V5</b>：改用取樣時鐘計時＋雙門檻磁滯＋點劃整批分群，修復只能解出 E、長音（劃）完全聽不到的問題。</li>
+                    <li><b>🆕 對方速度設定</b>：接收頁可指定對方 WPM 當解碼種子，快慢電碼都更穩。</li>
                     <li><b>循環發送 (Beacon)</b>：訊號可重複播送，並自訂間隔秒數，適合當信標。</li>
                     <li><b>頻道頻率</b>：750 / 1000 / 1500Hz 三頻道，發送與接收同步，不同隊伍可分流。</li>
                     <li><b>手動拍打鍵</b>：按住大按鈕手動打摩斯，即時解碼，適合練習與人工收發。</li>
@@ -421,7 +535,7 @@
                 </ul>
             </section>
             <footer class="text-center py-4">
-                <p class="text-[10px] font-bold text-slate-600 tracking-widest uppercase">COPYRIGHT © 2026 SCOUT SYSTEM · V4.0</p>
+                <p class="text-[10px] font-bold text-slate-600 tracking-widest uppercase">COPYRIGHT © 2026 SCOUT SYSTEM · V5.0</p>
             </footer>
         </div>
 
@@ -431,7 +545,7 @@
 
     <!-- ============ BOTTOM TAB BAR ============ -->
     <nav class="fixed bottom-0 left-0 w-full bg-[#0b1220]/95 backdrop-blur border-t border-slate-800 z-[5000]">
-        <div class="max-w-md mx-auto grid grid-cols-4 py-2">
+        <div class="max-w-md mx-auto grid grid-cols-5 py-2">
             <button class="tab-btn active flex flex-col items-center gap-1" data-tab="send" onclick="switchTab('send')">
                 <div class="tab-icon"><i class="fa-solid fa-tower-broadcast"></i></div>
                 <span class="text-[10px] font-bold">發送</span>
@@ -439,6 +553,10 @@
             <button class="tab-btn flex flex-col items-center gap-1" data-tab="decode" onclick="switchTab('decode')">
                 <div class="tab-icon"><i class="fa-solid fa-ear-listen"></i></div>
                 <span class="text-[10px] font-bold">接收解碼</span>
+            </button>
+            <button class="tab-btn flex flex-col items-center gap-1" data-tab="game" onclick="switchTab('game')">
+                <div class="tab-icon"><i class="fa-solid fa-gamepad"></i></div>
+                <span class="text-[10px] font-bold">遊戲</span>
             </button>
             <button class="tab-btn flex flex-col items-center gap-1" data-tab="tools" onclick="switchTab('tools')">
                 <div class="tab-icon"><i class="fa-solid fa-book"></i></div>
@@ -480,8 +598,11 @@
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById('page-' + name).classList.add('active');
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-        // 離開解碼頁就停止接收
+        // 離開解碼頁就停止接收；離開遊戲頁就中止本局
         if (name !== 'decode' && listening) toggleListen();
+        if (name !== 'game' && typeof game !== 'undefined' &&
+            (!document.getElementById('gamePlayBox').classList.contains('hidden') ||
+             !document.getElementById('gameResultBox').classList.contains('hidden'))) abortGame();
         window.scrollTo({top:0, behavior:'smooth'});
     }
 
@@ -493,7 +614,7 @@
     ============================================================ */
     let currentWPM = 15, unitMs = 80, isTransmitting = false, stopFlag = false, videoTrack = null;
     let toneFreq = 750;          // 蜂鳴頻率（可選頻道），發送與接收共用
-    const FREQ_BLOCK = 1024;     // 聲音解碼區塊大小
+    const FREQ_BLOCK = 512;      // 聲音解碼取樣區塊（@44.1kHz ≈ 11.6ms 解析度）
     const messageInput = document.getElementById('messageInput');
     const morsePreview = document.getElementById('morsePreview');
     const flashOverlay = document.getElementById('flashOverlay');
@@ -633,21 +754,38 @@
        以「單位時間 unit」分類 dot/dash/字母間隔/單字間隔。
     ============================================================ */
     let listening = false, decodeMode = 'sound';
-    let mediaStream = null, decAudioCtx = null, analyser = null, freqData = null;
+    let mediaStream = null, decAudioCtx = null;
     let camVideo = null, camCanvas = null, camCtx = null, camTrackRef = null;
     let rafId = null;
 
-    // 訊號狀態
-    let signalOn = false;
-    let stateStart = 0;           // 目前 on/off 段開始時間
-    let lastEdgeTime = 0;
+    // @@PURE-START@@ （純邏輯引擎，可被 Node 測試抽取；UI 只透過 DecUI 回呼）
+    /* ---------- V5 解碼引擎：修復「只解出 EEEEE」與「長音聽不出」 ----------
+       舊版三個根因：
+       1) 用回呼當下的 wall-clock 量音長 —— 手機音訊回呼常爆發式連發，
+          長音(劃 −)被量成短音 → 全部變成點(·) → 一直解出 E。
+          修法：聲音改用「取樣時鐘」（依取樣數推進），與回呼時間無關。
+       2) 門檻在長音期間持續追蹤雜訊底，長音響久了反被自己吃掉。
+          修法：訊號期間凍結雜訊追蹤，改用雙門檻磁滯（進入/離開）。
+       3) unit 估算會崩到 40ms 下限，使字元內 1 單位空隙被當字母間隔，
+          每個點都獨立成 E。修法：點/劃兩群自適應分群 + 整批重估。 */
+    let signalOn = false;          // 目前是否訊號中
+    let stateStart = 0;            // 目前 on/off 段起點（各自時鐘的 ms）
+    let pendingSince = -1;         // 邊緣等待確認的起始時間（-1 = 無）
+    const EDGE_DEBOUNCE_MS = 16;   // 邊緣去抖：狀態需維持這麼久才算真的翻轉
     let currentSymbols = '';       // 目前字母累積的 . 和 -
-    let liveCode = '';             // 顯示用整串
-    let decodedOut = '';
-    let estimatedUnit = 120;       // ms, 動態估算
-    let unitSamples = [];          // 收集 on 段長度估算 unit
-    // 自適應門檻
-    let noiseFloor = 0, peak = 0.0001, dynThresh = 0;
+    let decodedOut = '';           // 解出的文字
+    let flushedThisSilence = false;
+    // 點/劃自適應估算（以對方速度為種子，收到音後自動收斂）
+    let dotAvg = 80, dashAvg = 240;
+    let onHist = [];               // 最近的 on 段長度（整批分群用）
+    let offHist = [];              // 最近的 off 段長度（字元內間隔=1u，是最可靠的 unit 來源）
+    let letterOns = [];            // 目前正在組的字母、各音段的原始長度（unit 校正後可重判）
+    let recvWPM = 0;               // 0 = 自動（以本機發送 WPM 為種子）
+    // 自適應雙門檻（磁滯）
+    let noiseFloor = 0, peak = 0.15, thrOn = 0.1, thrOff = 0.06;
+    const DecUI = { level(){}, state(){}, morse(){}, text(){}, wpm(){} };
+    const avg = a => a.reduce((x,y)=>x+y,0)/(a.length||1);
+    // @@PURE-END@@
 
     const signalState = document.getElementById('signalState');
     const levelBar = document.getElementById('levelBar');
@@ -663,6 +801,22 @@
     const camCanvasEl = document.getElementById('camCanvas');
     const decodeHint = document.getElementById('decodeHint');
 
+    // ---- 引擎 → 畫面 回呼接上真正的 DOM ----
+    DecUI.level = (l, ton, toff, pk) => {
+        const denom = Math.max(pk, 0.0001);
+        levelBar.style.width = Math.min(100, Math.round(l/denom*100)) + '%';
+        threshMark.style.left = Math.min(100, Math.round(ton/denom*100)) + '%';
+        threshDisp.innerText = ton.toFixed(2) + '/' + toff.toFixed(2);
+    };
+    DecUI.state = (on) => {
+        signalState.innerText = on ? '● 訊號' : '聆聽中';
+        signalState.classList.toggle('text-cyan-400', on);
+        signalState.classList.toggle('text-green-400', !on);
+    };
+    DecUI.morse = (s) => { liveMorse.innerText = s || '—'; };
+    DecUI.text  = (t) => { decodedText.innerText = t.trim() || (listening ? '聆聽中…' : '等待訊號…'); };
+    DecUI.wpm   = (w) => { estWpmEl.innerText = (w && w > 0) ? w : '—'; };
+
     function setDecodeMode(mode){
         if (listening) toggleListen(); // 切換模式先停
         decodeMode = mode;
@@ -673,14 +827,14 @@
         camPreview.classList.toggle('hidden', mode !== 'light');
         document.getElementById('manualKeySection').classList.toggle('hidden', mode !== 'manual');
         decodeHint.innerHTML = mode === 'sound'
-            ? '聲音解碼：對準對方喇叭，鎖定所選頻率提示音（Goertzel 精準鎖頻）。'
+            ? '聲音解碼：對準對方喇叭，鎖定所選頻率提示音。V5 引擎：取樣時鐘計時＋雙門檻磁滯，長音（劃）不再漏。'
             : mode === 'light'
             ? '光源解碼：把後鏡頭對準閃光來源。先按「開始接收」會請求權限。'
             : '手動拍打：按住按鈕 = 發訊號，放開 = 停止。短按=點，長按=劃，自動分段解碼。';
     }
 
     function clearDecode(){
-        currentSymbols = ''; liveCode = ''; decodedOut = '';
+        currentSymbols = ''; decodedOut = '';
         liveMorse.innerText = '—'; decodedText.innerText = listening ? '聆聽中…' : '等待訊號…';
     }
 
@@ -696,12 +850,13 @@
         else copyDecoded();
     }
 
-    // 靈敏度滑桿：影響門檻乘數
-    let sensFactor = 1.0;
+    // 靈敏度滑桿：影響門檻高度
+    let sensFactor = 1.0, sensValue = 50;
     sensSlider.addEventListener('input', () => {
         // 0 -> 0.5x (敏感), 100 -> 1.8x (嚴格)
-        sensFactor = 0.5 + (sensSlider.value/100) * 1.3;
-        sensDisp.innerText = sensSlider.value == 50 ? '自動' : sensFactor.toFixed(2) + 'x';
+        sensValue = +sensSlider.value;
+        sensFactor = 0.5 + (sensValue/100) * 1.3;
+        sensDisp.innerText = sensValue == 50 ? '自動' : sensFactor.toFixed(2) + 'x';
     });
 
     async function toggleListen(){
@@ -733,17 +888,17 @@
         if (on){ decodedText.innerText = decodedOut.trim() || '聆聽中…'; }
     }
 
-    /* ---------- 聲音解碼（Goertzel 演算法：精準鎖所選頻率、抗噪）----------
-       原理：對每一小段時域樣本，只計算「目標頻率」的能量（單一 bin 的 DFT），
-       比 FFT 全頻譜更精準、運算量更小，對背景雜訊更穩健。
-       同時計算寬頻總能量做正規化，得到「目標頻率佔比」當作訊號強度。 */
-    let scriptNode = null, gSrc = null, gBuf = null;
-    let goCoeff = 0, goSr = 44100, goN = 0;
+    /* ---------- 聲音解碼（Goertzel 單頻鎖定 + 取樣時鐘計時）----------
+       只計算目標頻率的能量（單頻 DFT），再用「佔寬頻總能量比例」當訊號強度。
+       ★ 計時用「取樣時鐘」：時間完全由已處理的取樣數推進，
+         不依賴回呼觸發當下的 wall-clock —— 即使手機把多個區塊
+         攒成一批一次丟過來，量出來的音長依然精準（修復只解出 E 的關鍵）。*/
+    // @@PURE-START@@
+    let goCoeff = 0, goBlockMs = 23, sampleClock = 0;
 
     function initGoertzel(sampleRate, blockSize){
-        goSr = sampleRate; goN = blockSize;
-        const k = Math.round((blockSize * toneFreq) / sampleRate);
-        const omega = (2 * Math.PI * k) / blockSize;
+        goBlockMs = blockSize / sampleRate * 1000;
+        const omega = 2 * Math.PI * toneFreq / sampleRate;   // 精確頻率，不再四捨五入到 FFT bin
         goCoeff = 2 * Math.cos(omega);
     }
     // 回傳 0..1：目標頻率能量 / (寬頻總能量+eps)，再開根號平滑
@@ -760,6 +915,9 @@
         const ratio = power / (total * n * 0.5 + 1e-9); // 佔比正規化
         return Math.min(1, Math.sqrt(Math.max(0, ratio)));
     }
+    // @@PURE-END@@
+
+    let scriptNode = null, gSrc = null;
 
     async function startSoundDecode(){
         mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation:false, noiseSuppression:false, autoGainControl:false } });
@@ -769,13 +927,16 @@
         initGoertzel(decAudioCtx.sampleRate, FREQ_BLOCK);
         // ScriptProcessor 在所有手機瀏覽器都可用（AudioWorklet 相容性較差）
         scriptNode = decAudioCtx.createScriptProcessor(FREQ_BLOCK, 1, 1);
-        resetDecoderState();
+        sampleClock = 0;
+        resetDecoderState(0);
         setListeningUI(true);
         scriptNode.onaudioprocess = (e) => {
             if (!listening) return;
-            const input = e.inputBuffer.getChannelData(0);
-            const lvl = goertzelLevel(input);
-            processLevel(lvl);
+            const lvl = goertzelLevel(e.inputBuffer.getChannelData(0));
+            // 用取樣時鐘當時間軸：block 結束時間 = sampleClock
+            const tEnd = sampleClock + goBlockMs;
+            processLevel(lvl, tEnd);
+            sampleClock = tEnd;
         };
         gSrc.connect(scriptNode);
         // 靜音輸出，避免回授（音量 0）
@@ -793,7 +954,7 @@
         camCanvas.width = 64; camCanvas.height = 48;
         camCtx = camCanvas.getContext('2d', { willReadFrequently:true });
         camTrackRef = mediaStream.getVideoTracks()[0];
-        resetDecoderState();
+        resetDecoderState(performance.now());
         setListeningUI(true);
         lightLoop();
     }
@@ -819,153 +980,211 @@
     function lightLoop(){
         if (!listening) return;
         const b = frameBrightness();
-        processLevel(b);
+        processLevel(b, performance.now());
         rafId = requestAnimationFrame(lightLoop);
     }
 
     /* ---------- 手動拍打解碼（重複使用同一套狀態機） ---------- */
     let keyOn = false, keyDownAt = 0, manualTimer = null;
     function startManualDecode(){
-        resetDecoderState();
+        resetDecoderState(performance.now());
         setListeningUI(true);
         if (manualTimer) clearInterval(manualTimer);
         manualTimer = setInterval(() => {
             if (!listening) return;
             if (!keyOn) maybeFlushOnSilence(performance.now() - stateStart);
-        }, 100);
+        }, 60);
     }
     function manualKeyDown(){
         if (decodeMode !== 'manual') return;
         if (!listening) startManualDecode();
-        keyOn = true; keyDownAt = performance.now();
-        signalState.innerText = '● 訊號';
-        signalState.classList.add('text-cyan-400');
-        signalState.classList.remove('text-green-400');
+        if (keyOn) return; // 忽略多指重複觸發
+        const now = performance.now();
+        keyOn = true; keyDownAt = now;
+        handleSegment(false, now - stateStart);   // 結算按下前的靜默段
+        stateStart = now;
+        DecUI.state(true);
     }
     function manualKeyUp(){
         if (!keyOn) return;
         keyOn = false;
-        const dur = performance.now() - keyDownAt;
-        if (dur >= 25) handleSegment(true, dur); // 忽略極短誤觸
-        stateStart = performance.now();
-        signalState.innerText = '聆聽中';
-        signalState.classList.remove('text-cyan-400');
-        signalState.classList.add('text-green-400');
-    }
-
-    /* ---------- 共用：訊號 -> 摩斯狀態機 ---------- */
-    function resetDecoderState(){
-        signalOn = false;
-        stateStart = performance.now();
-        lastEdgeTime = performance.now();
-        currentSymbols = '';
-        liveCode = '';
-        decodedOut = '';
-        unitSamples = [];
-        estimatedUnit = 120;
-        noiseFloor = 0; peak = 0.0001; dynThresh = 0;
-        liveMorse.innerText = '—';
-        decodedText.innerText = '聆聽中…';
-        estWpmEl.innerText = '—';
-    }
-
-    // 持續校正背景/峰值，計算動態門檻
-    function updateThreshold(level){
-        // 緩慢追蹤雜訊底（取較低值），快速追蹤峰值
-        noiseFloor = noiseFloor * 0.995 + level * 0.005 * (level < (noiseFloor + 0.02) ? 1 : 0.2);
-        if (level > peak) peak = level;
-        else peak = peak * 0.999 + level * 0.001;
-        const span = Math.max(0.03, peak - noiseFloor);
-        // 門檻位於雜訊底與峰值之間，受靈敏度調整
-        let base = noiseFloor + span * 0.45;
-        dynThresh = base * (sensSlider.value == 50 ? 1 : sensFactor);
-        dynThresh = Math.min(Math.max(dynThresh, noiseFloor + 0.02), peak * 0.95 + 0.001);
-        return dynThresh;
-    }
-
-    function processLevel(level){
         const now = performance.now();
-        const thr = updateThreshold(level);
+        const dur = now - keyDownAt;
+        if (dur >= 25) handleSegment(true, dur); // 忽略極短誤觸
+        stateStart = now;
+        DecUI.state(false);
+    }
 
-        // UI meter
-        const pct = Math.min(100, Math.round(level * 100 / (peak + 0.0001) * 0.9));
-        levelBar.style.width = pct + '%';
-        const thrPct = Math.min(100, Math.round(thr * 100 / (peak + 0.0001) * 0.9));
-        threshMark.style.left = thrPct + '%';
-        threshDisp.innerText = thr.toFixed(3);
+    /* ---------- 共用：訊號 -> 摩斯狀態機（V5） ---------- */
+    // @@PURE-START@@
+    function resetDecoderState(t0){
+        signalOn = false;
+        pendingSince = -1;
+        stateStart = t0 || 0;
+        currentSymbols = '';
+        decodedOut = '';
+        flushedThisSilence = false;
+        onHist = [];
+        offHist = [];
+        letterOns = [];
+        noiseFloor = 0; peak = 0.15; thrOn = 0.1; thrOff = 0.06;
+        reseedTiming();
+        DecUI.morse('');
+        DecUI.text('');
+        DecUI.wpm(0);
+    }
 
-        const isOn = level > thr;
+    // 以對方速度（或本機發送速度）當點/劃種子，按「速度」鈕可手動重置
+    function reseedTiming(){
+        const wpm = (recvWPM > 0 ? recvWPM : currentWPM) || 15;
+        dotAvg = Math.min(Math.max(1200 / wpm, 25), 600);
+        dashAvg = dotAvg * 3;
+        onHist = [];
+        offHist = [];
+        letterOns = [];
+        DecUI.wpm(Math.round(1200 / dotAvg));
+    }
 
-        if (isOn !== signalOn){
-            // 邊緣：結算上一段
-            const dur = now - stateStart;
-            handleSegment(signalOn, dur);
-            signalOn = isOn;
-            stateStart = now;
-            signalState.innerText = isOn ? '● 訊號' : '聆聽中';
-            signalState.classList.toggle('text-cyan-400', isOn);
-            signalState.classList.toggle('text-green-400', !isOn);
+    // 雙門檻磁滯 + 自適應雜訊追蹤
+    // ★ 訊號中（raw=true）時凍結雜訊底 → 長音不會被門檻吃掉（修復長音漏聽）
+    function updateThresholds(level, raw){
+        if (raw){
+            // 只追峰值
+            peak = level > peak ? peak*0.9 + level*0.1 : peak*0.9995 + level*0.0005;
         } else {
-            // 持續 off 太久 -> 結束字母/單字（即時 flush）
-            if (!signalOn){
-                const offDur = now - stateStart;
-                maybeFlushOnSilence(offDur);
+            // 只在「非訊號」時追蹤雜訊底；峰值緩慢衰減以跟隨音量變化
+            noiseFloor = noiseFloor === 0 ? level : noiseFloor*0.95 + level*0.05;
+            peak = Math.max(noiseFloor*2 + 0.02, peak*0.999);
+        }
+        let span = Math.max(0.05, peak - noiseFloor);
+        // 靈敏度：0(敏感) → 門檻低；100(嚴格) → 門檻高
+        let fOn = Math.min(0.9, 0.35 + 0.004*sensValue);   // 預設 50 → 0.55
+        let fOff = Math.max(0.1, fOn - 0.25);              // 磁滯寬度
+        thrOn  = noiseFloor + span * fOn;
+        thrOff = Math.min(thrOn * 0.85, noiseFloor + span * fOff);
+    }
+
+    // 每個取樣區塊/幀呼叫；now 為該樣本「結束」的時間（各時鐘一致的 ms）
+    function processLevel(level, now){
+        const raw = signalOn ? (level > thrOff) : (level > thrOn);  // 磁滯：依目前狀態用不同門檻
+        updateThresholds(level, raw);
+        DecUI.level(level, thrOn, thrOff, peak);
+
+        if (raw !== signalOn){
+            if (pendingSince < 0) pendingSince = now;
+            if (now - pendingSince >= EDGE_DEBOUNCE_MS){
+                // 狀態穩定維持夠久 → 確認翻轉；邊緣回溯到「首次開始翻轉」的時間點
+                const edgeAt = pendingSince;
+                handleSegment(signalOn, edgeAt - stateStart);
+                signalOn = raw;
+                stateStart = edgeAt;
+                pendingSince = -1;
+                DecUI.state(raw);
             }
+        } else {
+            pendingSince = -1;
+            if (!signalOn) maybeFlushOnSilence(now - stateStart);
         }
     }
 
-    // 估算 unit：用最短的 on 段當 dot 基準（穩健中位數）
-    function refineUnit(onDur){
-        unitSamples.push(onDur);
-        if (unitSamples.length > 30) unitSamples.shift();
-        const sorted = [...unitSamples].sort((a,b)=>a-b);
-        // 取較短的一群（dot）做基準：用前 40% 的中位數
-        const k = Math.max(1, Math.floor(sorted.length*0.4));
-        const shortGroup = sorted.slice(0, k);
-        const med = shortGroup[Math.floor(shortGroup.length/2)] || onDur;
-        // dot 大約是 unit；若這段其實是 dash，med 仍會偏向 dot 群
-        estimatedUnit = Math.min(Math.max(med, 40), 600);
-        estWpmEl.innerText = Math.round(1200 / estimatedUnit) + '';
-    }
-
-    let flushedThisSilence = false;
+    // on 段 → 點/劃；off 段 → 字母/單字間隔
     function handleSegment(wasOn, dur){
         if (wasOn){
-            // 一個 on 段 = dot 或 dash
-            refineUnit(dur);
-            const u = estimatedUnit;
-            const sym = dur < u * 2 ? '.' : '-';   // <2u 視為 dot
+            if (dur < 15) return;   // 過短毛刺忽略
+            const mid = (dotAvg + dashAvg) / 2;   // 點/劃分界 = 兩群中點
+            let sym;
+            if (dur < mid){ sym = '.'; dotAvg = dotAvg*0.65 + dur*0.35; }
+            else          { sym = '-'; dashAvg = dashAvg*0.75 + dur*0.25; }
+            // 夾住不漂移：dot ∈ [25,600]ms，dash/dot 比例 ∈ [1.8, 5]
+            dotAvg = Math.min(Math.max(dotAvg, 25), 600);
+            dashAvg = Math.min(Math.max(dashAvg, dotAvg*1.8), dotAvg*5);
+            onHist.push(dur);  if (onHist.length > 40) onHist.shift();
+            letterOns.push(dur);
             currentSymbols += sym;
-            liveCode = (decodedOut + ' ' + currentSymbols).trim();
-            liveMorse.innerText = (currentSymbols || '—');
+            // 早期(4/6 個)就整批校正一次，之後每 8 個校正；
+            // 若 unit 明顯改變，reestimate 會用 letterOns 重建整串（含本音段），不會重複
+            if (onHist.length === 4 || onHist.length === 6 || onHist.length % 8 === 0) reestimateTiming();
+            DecUI.morse(currentSymbols);
+            DecUI.wpm(Math.round(1200 / dotAvg));
             flushedThisSilence = false;
         } else {
-            // off 段：根據長度決定字母間隔 / 單字間隔
-            const u = estimatedUnit;
-            if (dur >= u * 5){ flushLetter(); flushWord(); }
-            else if (dur >= u * 2){ flushLetter(); }
+            if (dur >= 15){ offHist.push(dur); if (offHist.length > 40) offHist.shift(); }
+            const u = dotAvg;
+            if (dur >= u*2.2){ flushLetter(); }    // >2.2u：字母間隔（標準 3u）
+            if (dur >= u*5.5){ flushWord(); }      // >5.5u：單字間隔（標準 7u）
         }
+    }
+
+    // unit 重估：on 群(點/劃) 與 off 群(字元內間隔=1u) 雙線索分群。
+    // 找「最大相鄰比值」的斷點切成短/長兩群；off 的短群就是 1u，機器碼特別準。
+    function splitTwoClusters(arr){
+        if (arr.length < 3) return null;
+        const s = [...arr].sort((a,b)=>a-b);
+        let bestR = 1, bi = 0;
+        for (let i=1;i<s.length;i++){ const r = s[i]/s[i-1]; if (r > bestR){ bestR = r; bi = i; } }
+        if (bestR < 1.8 || bi <= 0 || bi >= s.length) return null;
+        return { lo: avg(s.slice(0,bi)), hi: avg(s.slice(bi)) };
+    }
+    function reestimateTiming(){
+        if (onHist.length < 4) return;
+        const oldDot = dotAvg;
+        const ons  = splitTwoClusters(onHist);
+        const offs = splitTwoClusters(offHist);
+        if (ons && offs){
+            // 兩者都成立：on 短群≈點、off 短群≈1u，理應接近；取平均更穩
+            dotAvg = (ons.lo + offs.lo) / 2;
+            dashAvg = ons.hi;
+        } else if (offs){
+            // 只用間隔推 unit（處理全劃訊號如 "---" 也沒問題）
+            dotAvg = offs.lo; dashAvg = offs.lo * 3;
+        } else if (ons){
+            dotAvg = ons.lo; dashAvg = ons.hi;
+        } else {
+            // 只有一群：若幾乎全被判成劃，代表種子太慢 → 視為劃群重設
+            const s = [...onHist].sort((a,b)=>a-b);
+            const mid = (dotAvg + dashAvg) / 2;
+            const dashCount = onHist.filter(d => d >= mid).length;
+            const med = s[Math.floor(s.length/2)];
+            if (dashCount > onHist.length*0.85){ dashAvg = med; dotAvg = med/3; }
+            else { dotAvg = med; dashAvg = med*3; }
+        }
+        dotAvg = Math.min(Math.max(dotAvg, 25), 600);
+        dashAvg = Math.min(Math.max(dashAvg, dotAvg*1.8), dotAvg*5);
+        // unit 明顯改變 → 用新 unit 重判「目前這個字母」已累積的音段（補救種子不準）
+        if (letterOns.length && Math.abs(dotAvg - oldDot)/oldDot > 0.2){
+            const mid = (dotAvg + dashAvg) / 2;
+            currentSymbols = letterOns.map(d => d < mid ? '.' : '-').join('');
+            DecUI.morse(currentSymbols);
+        }
+        DecUI.wpm(Math.round(1200 / dotAvg));
     }
 
     function maybeFlushOnSilence(offDur){
-        const u = estimatedUnit;
-        if (!flushedThisSilence){
-            if (offDur >= u * 2 && currentSymbols){ flushLetter(); }
-            if (offDur >= u * 5){ flushWord(); flushedThisSilence = true; }
+        const u = dotAvg;
+        if (offDur >= u*2.2 && currentSymbols){ flushLetter(); }
+        if (offDur >= u*5.5 && !flushedThisSilence){
+            flushLetter(); flushWord(); flushedThisSilence = true;
         }
     }
 
     function flushLetter(){
         if (!currentSymbols) return;
-        const ch = REV_MORSE[currentSymbols] || '?';
-        decodedOut += ch;
+        decodedOut += (REV_MORSE[currentSymbols] || '?');
         currentSymbols = '';
-        liveMorse.innerText = '—';
-        decodedText.innerText = decodedOut.trim() || '聆聽中…';
+        letterOns = [];
+        DecUI.morse('');
+        DecUI.text(decodedOut);
     }
     function flushWord(){
-        if (decodedOut.length && !decodedOut.endsWith(' ')) decodedOut += ' ';
-        decodedText.innerText = decodedOut.trim() || '聆聽中…';
+        flushLetter();
+        if (decodedOut.length && !decodedOut.endsWith(' ')){ decodedOut += ' '; DecUI.text(decodedOut); }
+    }
+    // @@PURE-END@@
+
+    function setRecvWPM(v){
+        recvWPM = v;
+        document.querySelectorAll('.rwpm-chip').forEach(c => c.classList.toggle('active', parseInt(c.dataset.rwpm) === v));
+        reseedTiming();
     }
 
     function stopListen(){
@@ -982,11 +1201,311 @@
         if (mediaStream){ mediaStream.getTracks().forEach(t=>t.stop()); mediaStream = null; }
         if (decAudioCtx){ try{ decAudioCtx.close(); }catch(e){} decAudioCtx = null; }
         if (camVideo){ camVideo.srcObject = null; }
-        analyser = null; camTrackRef = null;
+        camTrackRef = null;
         levelBar.style.width = '0%';
         setListeningUI(false);
         signalState.innerText = '待機';
     }
+
+    /* ============================================================
+       摩斯聽力特訓遊戲（8 關 × 3 難度 × 電報音/信號燈雙裝備）
+       玩法：播放一個字元的摩斯碼 → 從選項中選出正確字元。
+       每關 10 題，答對 8 題解鎖下一關。進度與最佳成績存本機。
+    ============================================================ */
+    const GAME_STAGES = [
+        { name:'新手試煉', chars:'ETIS'   },
+        { name:'向前推進', chars:'AMNWU'  },
+        { name:'長音特訓', chars:'OTGDJ'  },
+        { name:'混合密碼', chars:'KRVHFL' },
+        { name:'數字登場', chars:'51027'  },
+        { name:'數字攻防', chars:'39468'  },
+        { name:'完整字庫', chars:'PXBYCQZ' },
+        { name:'電碼大師', chars:'.?/,'   },
+    ];
+    const GAME_DIFFS = {
+        easy:{ label:'簡單', wpm:8,  options:4, showHint:true,  timeLimit:0,    mixPool:'stage' },
+        med: { label:'中等', wpm:12, options:4, showHint:false, timeLimit:0,    mixPool:'stage' },
+        hard:{ label:'困難', wpm:18, options:6, showHint:false, timeLimit:6000, mixPool:'all'   },
+    };
+    const GKEY = 'scout_morse_game_v1';
+    function loadGameSave(){ try { return JSON.parse(localStorage.getItem(GKEY) || '{}'); } catch(e){ return {}; } }
+    function saveGameSave(s){ try { localStorage.setItem(GKEY, JSON.stringify(s)); } catch(e){} }
+    function gameSave(){
+        const s = loadGameSave();
+        if (typeof s.unlocked !== 'number' || s.unlocked < 1) s.unlocked = 1;
+        if (!s.best || typeof s.best !== 'object') s.best = {};
+        return s;
+    }
+
+    const game = {
+        equip:'sound', diff:'easy', stage:1,
+        q:0, score:0, streak:0, correct:0,
+        current:'', options:[], answered:false,
+        playing:false, token:0,       // token：用來作廢進行中的播放迴圈
+        timerId:null, timerEnd:0, timeLimit:0,
+    };
+    const TOTAL_Q = 10;
+
+    function setGameEquip(e){
+        game.equip = e;
+        const cls = on => 'py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 ' + (on ? 'bg-blue-600 text-white' : 'bg-[#1e293b] text-slate-300');
+        document.getElementById('equipSound').className = cls(e === 'sound');
+        document.getElementById('equipLamp').className  = cls(e === 'lamp');
+        document.getElementById('lampBulb').classList.toggle('hidden', e !== 'lamp');
+        document.getElementById('waveBox').classList.toggle('hidden', e === 'lamp');
+    }
+    function setGameDiff(d){
+        game.diff = d;
+        const cls = on => 'py-2 rounded-xl font-bold text-xs ' + (on ? 'bg-blue-600 text-white' : 'bg-[#1e293b] text-slate-300');
+        document.getElementById('diffEasy').className = cls(d === 'easy');
+        document.getElementById('diffMed').className  = cls(d === 'med');
+        document.getElementById('diffHard').className = cls(d === 'hard');
+    }
+
+    // 關卡地圖渲染（含解鎖狀態與星星）
+    function renderStageGrid(){
+        const s = gameSave();
+        const grid = document.getElementById('stageGrid');
+        grid.innerHTML = GAME_STAGES.map((st, i) => {
+            const n = i + 1;
+            const locked = n > s.unlocked;
+            const bs = s.best[n + ''] || {};
+            const stars = bs.s || 0;
+            const score = bs.hs || 0;
+            const totalPool = GAME_STAGES[i].chars.split('').join(' ');
+            return `<button class="stage-card${locked ? ' locked' : ''}" ${locked ? 'disabled' : ''} onclick="startStage(${n})">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-extrabold ${locked ? 'text-slate-500' : 'text-white'}">第 ${n} 關 · ${st.name}</span>
+                    <span class="text-xs">${locked ? '<i class="fa-solid fa-lock text-slate-600"></i>' : ''}</span>
+                </div>
+                <div class="font-mono text-[10px] text-cyan-400 tracking-widest mt-1 break-all">${totalPool}</div>
+                <div class="flex items-center justify-between mt-1">
+                    <span class="stage-stars text-[11px]">${'★'.repeat(stars)}${'☆'.repeat(3-stars)}</span>
+                    <span class="text-[9px] text-slate-500">${score > 0 ? '最佳 ' + score + ' 分' : (locked ? '未解鎖' : '尚未挑戰')}</span>
+                </div>
+            </button>`;
+        }).join('');
+        // 總星數
+        let total = 0;
+        for (let i = 1; i <= GAME_STAGES.length; i++) total += (s.best[i + ''] || {}).s || 0;
+        document.getElementById('gameTotalStars').innerText = '總星數 ' + total + ' / ' + (GAME_STAGES.length * 3);
+    }
+
+    // 進入一關
+    function startStage(n){
+        game.stage = n;
+        game.q = 0; game.score = 0; game.streak = 0; game.correct = 0;
+        game.playing = true;
+        document.getElementById('stageSelectBox').classList.add('hidden');
+        document.getElementById('gameResultBox').classList.add('hidden');
+        document.getElementById('gamePlayBox').classList.remove('hidden');
+        nextQuestion();
+    }
+    function abortGame(){
+        game.playing = false;
+        game.token++;                        // 作廢播放中的迴圈
+        stopGameTimer();
+        flashOverlay.style.display = 'none';
+        setLampVisual(false);
+        document.getElementById('gamePlayBox').classList.add('hidden');
+        document.getElementById('gameResultBox').classList.add('hidden');
+        document.getElementById('stageSelectBox').classList.remove('hidden');
+        renderStageGrid();
+    }
+    function resetGameProgress(){
+        if (!confirm('確定要重置所有關卡進度與成績嗎？')) return;
+        saveGameSave({ unlocked:1, best:{} });
+        abortGame();
+    }
+
+    // 抽題目（困難模式從已解鎖的所有字元混抽）
+    function pickQuestionChar(){
+        const D = GAME_DIFFS[game.diff];
+        if (D.mixPool === 'all'){
+            const s = gameSave();
+            const upTo = Math.max(game.stage, s.unlocked);
+            let pool = '';
+            for (let i = 0; i < Math.min(upTo, GAME_STAGES.length); i++) pool += GAME_STAGES[i].chars;
+            const u = [...new Set(pool.split(''))];
+            return u[Math.floor(Math.random() * u.length)];
+        }
+        const pool = GAME_STAGES[game.stage - 1].chars;
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function nextQuestion(){
+        if (!game.playing) return;
+        game.token++;                        // 作廢上一題可能還在播的聲音/燈光
+        game.answered = false;
+        game.q++;
+        if (game.q > TOTAL_Q){ finishStage(); return; }
+        game.current = pickQuestionChar();
+        const D = GAME_DIFFS[game.diff];
+        // 組選項：正解 + 隨機干擾
+        const poolSet = [...new Set(GAME_STAGES[game.stage - 1].chars.split(''))];
+        const opts = new Set([game.current]);
+        while (opts.size < Math.min(D.options, poolSet.length)){
+            opts.add(poolSet[Math.floor(Math.random() * poolSet.length)]);
+        }
+        game.options = [...opts].sort(() => Math.random() - 0.5);
+        // UI
+        document.getElementById('gameQNum').innerText = '第 ' + game.q + ' / ' + TOTAL_Q + ' 題';
+        document.getElementById('gameStreak').innerText = game.streak;
+        document.getElementById('gameScore').innerText = game.score;
+        document.getElementById('gameProg').style.width = ((game.q - 1) / TOTAL_Q * 100) + '%';
+        document.getElementById('gameFeedback').innerText = '';
+        document.getElementById('hintCode').innerText = D.showHint ? displayMorse(game.current) : '？';
+        const grid = document.getElementById('answerGrid');
+        grid.className = 'grid gap-2 ' + (D.options >= 6 ? 'grid-cols-3' : 'grid-cols-2');
+        grid.innerHTML = game.options.map(c =>
+            `<button class="ans-btn" data-ch="${c}" onclick="answerPick('${c}')">${c}</button>`
+        ).join('');
+        game.timeLimit = D.timeLimit;
+        playCurrent();
+    }
+
+    function displayMorse(ch){
+        return (MORSE_MAP[ch] || '').split('').map(x => x === '.' ? '·' : '−').join(' ');
+    }
+
+    // 播放目前題目（依裝備：聲音或信號燈全螢幕閃光）
+    let lampEl = null;
+    function setLampVisual(on){
+        if (!lampEl) lampEl = document.getElementById('lampBulb');
+        lampEl.classList.toggle('on', on);
+    }
+    async function playCurrent(){
+        const tk = ++game.token;
+        const D = GAME_DIFFS[game.diff];
+        const unit = 1200 / D.wpm;
+        const code = MORSE_MAP[game.current] || '';
+        await new Promise(r => setTimeout(r, 500));   // 開始前小停頓
+        if (tk !== game.token || !game.playing) return;
+        for (let i = 0; i < code.length; i++){
+            if (tk !== game.token || !game.playing) return;
+            const dur = code[i] === '.' ? unit : unit * 3;
+            if (game.equip === 'sound'){
+                document.getElementById('waveBox').classList.add('on');
+                await playTone(dur);
+                document.getElementById('waveBox').classList.remove('on');
+            } else {
+                flashOverlay.style.display = 'block';
+                setLampVisual(true);
+                await new Promise(r => setTimeout(r, dur));
+                flashOverlay.style.display = 'none';
+                setLampVisual(false);
+            }
+            if (tk !== game.token || !game.playing) return;
+            if (i < code.length - 1) await new Promise(r => setTimeout(r, unit));
+        }
+        // 播完；困難模式啟動限時
+        if (tk === game.token && game.playing && !game.answered && game.timeLimit > 0) startGameTimer(game.timeLimit);
+    }
+    function replayQuestion(){
+        if (!game.playing || game.answered) return;
+        stopGameTimer();               // 重播時先停表，播完再重新計
+        document.getElementById('timerWrap').classList.add('hidden');
+        playCurrent();
+    }
+
+    // 限時作答計時條
+    function startGameTimer(ms){
+        stopGameTimer();
+        document.getElementById('timerWrap').classList.remove('hidden');
+        game.timerEnd = performance.now() + ms;
+        const bar = document.getElementById('timerBar');
+        game.timerId = setInterval(() => {
+            const left = game.timerEnd - performance.now();
+            const pct = Math.max(0, left / ms * 100);
+            bar.style.width = pct + '%';
+            if (left <= 0){
+                stopGameTimer();
+                if (!game.answered) answerPick(null);   // 超時視為答錯
+            }
+        }, 100);
+    }
+    function stopGameTimer(){ if (game.timerId){ clearInterval(game.timerId); game.timerId = null; } }
+
+    // 作答（ch 為 null = 超時）
+    function answerPick(ch){
+        if (!game.playing || game.answered) return;
+        game.answered = true;
+        game.token++;                        // 停止播放
+        stopGameTimer();
+        flashOverlay.style.display = 'none';
+        setLampVisual(false);
+        const ok = ch === game.current;
+        const fb = document.getElementById('gameFeedback');
+        // 按鍵上色
+        document.querySelectorAll('#answerGrid .ans-btn').forEach(b => {
+            if (b.dataset.ch === game.current) b.classList.add('correct');
+            else if (ch !== null && b.dataset.ch === ch) b.classList.add('wrong');
+            else b.classList.add('dim');
+        });
+        document.getElementById('hintCode').innerText = displayMorse(game.current);
+        let base = 100;
+        if (ok){
+            game.correct++; game.streak++;
+            let bonus = Math.min(game.streak - 1, 10) * 10;      // 連勝加成
+            if (game.timeLimit > 0){                              // 困難模式剩餘時間加成
+                bonus += Math.max(0, Math.round((game.timerEnd - performance.now()) / 100));
+            }
+            game.score += base + bonus;
+            fb.innerHTML = '<span class="text-green-400"><i class="fa-solid fa-check mr-1"></i>正確！' + game.current + ' = ' + displayMorse(game.current) + '（+' + (base + bonus) + '）</span>';
+            sfx(true);
+        } else {
+            game.streak = 0;
+            fb.innerHTML = '<span class="text-red-400"><i class="fa-solid fa-xmark mr-1"></i>' + (ch === null ? '超時！' : '答錯了。') + '正解是 ' + game.current + ' = ' + displayMorse(game.current) + '</span>';
+            sfx(false);
+        }
+        document.getElementById('gameStreak').innerText = game.streak;
+        document.getElementById('gameScore').innerText = game.score;
+        document.getElementById('gameProg').style.width = (game.q / TOTAL_Q * 100) + '%';
+        setTimeout(() => { if (game.playing) nextQuestion(); }, ok ? 900 : 1700);
+    }
+
+    // 答對/答錯音效（短促提示音，不走發報頻率）
+    function sfx(ok){
+        try {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const seq = ok ? [[880, 0], [1320, 90]] : [[220, 0], [160, 130]];
+            seq.forEach(([f, delay]) => {
+                const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+                o.type = ok ? 'sine' : 'square';
+                o.frequency.value = f;
+                g.gain.setValueAtTime(0, audioCtx.currentTime + delay/1000);
+                g.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + delay/1000 + 0.01);
+                g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + delay/1000 + 0.12);
+                o.connect(g); g.connect(audioCtx.destination);
+                o.start(audioCtx.currentTime + delay/1000); o.stop(audioCtx.currentTime + delay/1000 + 0.15);
+            });
+        } catch(e){}
+    }
+
+    // 過關結算：10 滿分=3星, 8=2星, 6=1星
+    function finishStage(){
+        game.playing = false;
+        stopGameTimer();
+        const stars = game.correct >= TOTAL_Q ? 3 : game.correct >= 8 ? 2 : game.correct >= 6 ? 1 : 0;
+        const s = gameSave();
+        const key = game.stage + '';
+        const prev = s.best[key] || { s:0, hs:0 };
+        s.best[key] = { s: Math.max(prev.s, stars), hs: Math.max(prev.hs, game.score) };
+        let unlockMsg = '';
+        if (game.correct >= 8 && game.stage < GAME_STAGES.length && game.stage >= s.unlocked){
+            s.unlocked = game.stage + 1;
+            unlockMsg = '🎉 解鎖第 ' + (game.stage + 1) + ' 關「' + GAME_STAGES[game.stage].name + '」！';
+        }
+        saveGameSave(s);
+        document.getElementById('gamePlayBox').classList.add('hidden');
+        document.getElementById('gameResultBox').classList.remove('hidden');
+        document.getElementById('resultTitle').innerText = '第 ' + game.stage + ' 關完成！';
+        document.getElementById('resultStars').innerHTML = '<span class="stage-stars">' + '★'.repeat(stars) + '</span><span class="text-slate-600">' + '☆'.repeat(3 - stars) + '</span>';
+        document.getElementById('resultDetail').innerText = '答對 ' + game.correct + ' / ' + TOTAL_Q + ' 題 · 得分 ' + game.score;
+        document.getElementById('resultUnlock').innerText = unlockMsg || (game.correct >= 8 ? '' : '答對 8 題以上才能解鎖下一關，再試一次！');
+    }
+    function replayStage(){ startStage(game.stage); }
 
     /* ============================================================
        PWA：Service Worker 註冊 + 安裝提示
@@ -1034,7 +1553,7 @@
         const arr = loadHistory();
         arr.unshift({
             t: Date.now(),
-            mode: decodeMode === 'sound' ? '🎙️聲音' : '💡光源',
+            mode: decodeMode === 'sound' ? '🎙️聲音' : decodeMode === 'light' ? '💡光源' : '👆手動',
             text: text,
             morse: textToMorse(text),
             wpm: estWpmEl.innerText
@@ -1126,9 +1645,10 @@
         const audioBuf = await ctx.decodeAudioData(arrBuf);
         const data = audioBuf.getChannelData(0);
         const sr = audioBuf.sampleRate;
-        const BLOCK = 1024;
+        const BLOCK = 512;
         initGoertzel(sr, BLOCK);
         // 第一遍：算每個區塊的 level，找出峰值與雜訊底
+        const blockMs = BLOCK/sr*1000;
         const levels = [];
         for (let i=0;i+BLOCK<=data.length;i+=BLOCK){
             levels.push(goertzelLevel(data.subarray(i,i+BLOCK)));
@@ -1136,23 +1656,36 @@
         if (!levels.length){ fm.innerText='—'; ft.innerText='（音訊太短）'; return; }
         const sorted=[...levels].sort((a,b)=>a-b);
         const noise = sorted[Math.floor(sorted.length*0.2)];
-        const peak  = sorted[Math.floor(sorted.length*0.95)];
-        const thr = noise + (peak-noise)*0.4;
-        const blockMs = BLOCK/sr*1000;
-        // 取得 on/off 段長度
-        const segs=[]; let cur=levels[0]>thr, len=0;
-        for (const l of levels){ const on=l>thr; if(on===cur){len++;} else {segs.push({on:cur,ms:len*blockMs}); cur=on; len=1;} }
-        segs.push({on:cur,ms:len*blockMs});
-        // 估算 unit：最短的 on 段
-        const onMs = segs.filter(s=>s.on && s.ms>blockMs).map(s=>s.ms).sort((a,b)=>a-b);
-        const unit = onMs.length ? Math.max(onMs[0], blockMs) : 100;
+        const pk    = sorted[Math.floor(sorted.length*0.95)];
+        const thrOnF  = noise + Math.max(0.05, pk-noise)*0.5;
+        const thrOffF = noise + Math.max(0.05, pk-noise)*0.25;
+        // 磁滯掃描成 on/off 段（用取樣計時，精準）
+        const segs=[]; let cur = levels[0] > thrOnF, len = 0;
+        for (const l of levels){
+            const on = l > (cur ? thrOffF : thrOnF);   // 磁滯
+            if (on === cur) len++;
+            else { segs.push({on:cur, ms:len*blockMs}); cur = on; len = 1; }
+        }
+        segs.push({on:cur, ms:len*blockMs});
+        // 丟掉開頭過長靜音以外的合理段落；估算點/劃用兩群聚類
+        const onMs = segs.filter(s=>s.on && s.ms >= 15).map(s=>s.ms).sort((a,b)=>a-b);
+        if (!onMs.length){ fm.innerText='—'; ft.innerText='（聽不到明顯的蜂鳴聲）'; return; }
+        let dot = onMs[0], dash = onMs[onMs.length-1];
+        if (onMs.length >= 2){
+            let bestR = 1, bi = 0;
+            for (let i=1;i<onMs.length;i++){ const r = onMs[i]/onMs[i-1]; if (r > bestR){ bestR = r; bi = i; } }
+            if (bestR >= 1.8 && bi > 0){ dot = avg(onMs.slice(0,bi)); dash = avg(onMs.slice(bi)); }
+            else { dot = onMs[Math.floor(onMs.length/2)]; dash = dot*3; } // 只有一種長度：當作點
+        }
+        const unit = dot;
+        const mid = (dot + dash) / 2;
         // 組碼
         let sym='', out='';
         for (const s of segs){
-            if (s.on){ sym += (s.ms < unit*2 ? '.' : '-'); }
+            if (s.on){ if (s.ms >= 15) sym += (s.ms < mid ? '.' : '-'); }
             else {
-                if (s.ms >= unit*5){ if(sym){ out += (REV_MORSE[sym]||'?'); sym=''; } if(out && !out.endsWith(' ')) out+=' '; }
-                else if (s.ms >= unit*2){ if(sym){ out += (REV_MORSE[sym]||'?'); sym=''; } }
+                if (s.ms >= unit*2.2 && sym){ out += (REV_MORSE[sym]||'?'); sym=''; }
+                if (s.ms >= unit*5.5){ if (sym){ out += (REV_MORSE[sym]||'?'); sym=''; } if(out && !out.endsWith(' ')) out+=' '; }
             }
         }
         if (sym){ out += (REV_MORSE[sym]||'?'); }
@@ -1294,6 +1827,10 @@
     buildRef();
     renderHistory();
     detectTorch();
+    // 遊戲初始化
+    setGameEquip('sound');
+    setGameDiff('easy');
+    renderStageGrid();
     </script>
 </body>
 </html>

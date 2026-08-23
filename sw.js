@@ -1,7 +1,7 @@
 /* Scout Morse Service Worker
    策略：App Shell 與本地 CSS / 字型資源預快取 + 線上優先回退快取。
    每次改版請更新 CACHE 版本字串。 */
-const CACHE = 'scout-morse-v5.0.0-local-assets';
+const CACHE = 'scout-morse-v5.1.0-local-assets';
 const ASSETS = [
   './',
   './index.html',

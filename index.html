@@ -74,6 +74,57 @@
         nav.fixed { padding-bottom: env(safe-area-inset-bottom, 0px) !important; }
         #manualKey { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
         .freq-chip.active { background-color: var(--accent); color: white; box-shadow: 0 0 15px rgba(37,99,235,.4); }
+        /* ===== 手動電報電鍵與全螢幕拍鍵樣式 ===== */
+        .telegraph-key {
+            background: radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 100%);
+            border: 2px solid #334155;
+            box-shadow: 0 8px 24px -4px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.08);
+            transition: all 0.06s ease;
+            cursor: pointer;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        .telegraph-key:active, .telegraph-key.key-pressed {
+            transform: translateY(3px) scale(0.985);
+            border-color: #22d3ee;
+            background: radial-gradient(circle at 50% 40%, #0e7490 0%, #082f49 100%);
+            box-shadow: 0 0 32px 6px rgba(34,211,238,0.45), inset 0 3px 8px rgba(0,0,0,0.6);
+        }
+        .full-screen-pad {
+            background: radial-gradient(circle at 50% 50%, #1e293b 0%, #0b1220 100%);
+            border: 2px dashed #475569;
+            transition: all 0.06s ease;
+            cursor: pointer;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        .full-screen-pad:active, .full-screen-pad.pad-pressed {
+            border-color: #38bdf8;
+            border-style: solid;
+            background: radial-gradient(circle at 50% 50%, #0369a1 0%, #082f49 100%);
+            box-shadow: 0 0 50px 10px rgba(56,189,248,0.35);
+        }
+        body.theme-light .telegraph-key {
+            background: radial-gradient(circle at 50% 30%, #f1f5f9 0%, #e2e8f0 100%);
+            border-color: #cbd5e1;
+            color: #0f172a;
+        }
+        body.theme-light .telegraph-key:active, body.theme-light .telegraph-key.key-pressed {
+            background: radial-gradient(circle at 50% 40%, #bae6fd 0%, #7dd3fc 100%);
+            border-color: #0284c7;
+        }
+        body.theme-light .full-screen-pad {
+            background: radial-gradient(circle at 50% 50%, #f8fafc 0%, #e2e8f0 100%);
+            border-color: #cbd5e1;
+        }
+        body.theme-light .full-screen-pad:active, body.theme-light .full-screen-pad.pad-pressed {
+            background: radial-gradient(circle at 50% 50%, #bae6fd 0%, #7dd3fc 100%);
+            border-color: #0284c7;
+        }
         /* ===== 遊戲頁 ===== */
         .lamp-bulb { width:92px; height:92px; border-radius:50%; display:flex; align-items:center; justify-content:center;
             font-size:44px; color:#475569; background:#0b1220; border:2px solid #1e293b; transition: all .04s; }
@@ -99,6 +150,75 @@
 </head>
 <body class="p-4 pb-28">
     <div id="flashOverlay" class="flash-overlay"></div>
+
+    <!-- 全螢幕電報拍發互動面板 -->
+    <div id="manualFullScreenModal" class="hidden fixed inset-0 z-50 bg-[#0b1220] flex flex-col p-4 select-none touch-none">
+        <!-- 頂部列 -->
+        <div class="flex items-center justify-between py-2 border-b border-slate-800">
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-cyan-400 animate-pulse"></span>
+                <span class="font-bold text-white text-sm">全螢幕電報拍發</span>
+            </div>
+            <button onclick="closeFullScreenKeyer()" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- 輸出即時顯示區 -->
+        <div class="py-3 space-y-2">
+            <div class="flex justify-between items-center text-xs text-slate-400">
+                <span>解碼文字</span>
+                <span id="fsManualHoldGauge" class="px-3 py-1 rounded-full text-xs font-mono font-bold border border-slate-700 bg-slate-900/60 text-slate-400">待機中</span>
+            </div>
+            <div id="fsDecodedText" class="p-3.5 rounded-2xl bg-[#0f172a] border border-slate-700 text-white font-extrabold text-2xl min-h-[58px] break-words flex items-center">等待拍發…</div>
+            <div id="fsLiveMorse" class="p-2 rounded-xl bg-[#0b1220] border border-slate-800 font-mono text-cyan-400 font-bold text-base tracking-widest text-center min-h-[38px] flex items-center justify-center">—</div>
+            <!-- 長短音門檻計時條 -->
+            <div class="h-2 w-full rounded-full bg-[#0b1220] border border-slate-800 overflow-hidden">
+                <div id="fsManualHoldBar" class="h-full w-0 transition-all bg-gradient-to-r from-blue-500 to-cyan-400"></div>
+            </div>
+        </div>
+
+        <!-- 大面積觸控拍鍵區 -->
+        <div id="fsManualPad" class="flex-1 my-2 rounded-3xl full-screen-pad flex flex-col items-center justify-center relative select-none touch-none">
+            <div id="fsManualLamp" class="lamp-bulb mb-3 pointer-events-none">
+                <i class="fa-solid fa-bolt"></i>
+            </div>
+            <div class="text-white font-extrabold text-2xl tracking-wider pointer-events-none mb-1">
+                <i class="fa-solid fa-hand-pointer mr-2 text-cyan-400"></i>按住拍發
+            </div>
+            <div class="text-xs text-slate-400 pointer-events-none font-medium">短按 = 點(·) · 長按 = 劃(−)</div>
+            <div class="text-[10px] text-cyan-400/80 pointer-events-none mt-2 font-mono">觸控任意區域即可發出長短音解碼</div>
+        </div>
+
+        <!-- 底部裝備開關與輔助按鍵 -->
+        <div class="space-y-2 pt-2 border-t border-slate-800">
+            <div class="grid grid-cols-3 gap-2">
+                <button id="fsToggleManualSound" onclick="setManualSound(!manualSoundOn)" class="py-2 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1 border bg-blue-600/30 text-cyan-300 border-cyan-500/50">
+                    <i class="fa-solid fa-volume-high"></i> <span>電報音</span>
+                </button>
+                <button id="fsToggleManualLamp" onclick="setManualLamp(!manualLampOn)" class="py-2 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1 border bg-yellow-600/30 text-yellow-300 border-yellow-500/50">
+                    <i class="fa-solid fa-lightbulb"></i> <span>信號燈</span>
+                </button>
+                <button id="fsToggleManualVibe" onclick="setManualVibe(!manualVibeOn)" class="py-2 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1 border bg-purple-600/30 text-purple-300 border-purple-500/50">
+                    <i class="fa-solid fa-mobile-screen"></i> <span>震動</span>
+                </button>
+            </div>
+            <div class="grid grid-cols-4 gap-2">
+                <button onclick="manualBackspace()" class="py-3 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95">
+                    <i class="fa-solid fa-delete-left mr-1"></i>退格
+                </button>
+                <button onclick="manualSpace()" class="py-3 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95">
+                    <i class="fa-solid fa-arrows-left-right-to-line mr-1"></i>空格
+                </button>
+                <button onclick="manualCommitLetter()" class="py-3 rounded-xl font-bold text-xs bg-cyan-900/60 hover:bg-cyan-800 text-cyan-300 border border-cyan-700/50 active:scale-95">
+                    <i class="fa-solid fa-check mr-1"></i>結算
+                </button>
+                <button onclick="clearDecode()" class="py-3 rounded-xl font-bold text-xs bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-800/50 active:scale-95">
+                    <i class="fa-solid fa-trash mr-1"></i>清除
+                </button>
+            </div>
+        </div>
+    </div>
     <div class="max-w-md mx-auto space-y-4">
         <!-- Header -->
         <header class="glass-card p-6 rounded-2xl shadow-xl flex items-center justify-between">
@@ -295,7 +415,7 @@
                 </div>
 
                 <!-- sensitivity -->
-                <div>
+                <div id="sensBox">
                     <div class="flex justify-between items-center mb-1">
                         <label class="text-xs font-bold text-slate-400">靈敏度</label>
                         <span id="sensDisp" class="text-[10px] font-mono text-blue-400">自動</span>
@@ -305,13 +425,79 @@
                 </div>
             </section>
 
-            <!-- 手動拍打鍵 -->
-            <section id="manualKeySection" class="glass-card p-5 rounded-2xl shadow-sm space-y-3 hidden">
-                <label class="text-sm font-bold text-slate-300"><i class="fa-solid fa-hand-pointer text-cyan-400 mr-1"></i>手動拍打鍵</label>
-                <p class="text-[11px] text-slate-500 leading-relaxed">按住 = 發訊號，放開 = 停止。短按 = 點(·)，長按 = 劃(−)；自動依停頓分段成字母與單字。</p>
-                <button id="manualKey" class="w-full h-44 rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white font-extrabold text-2xl transition-transform active:scale-[0.98]">
-                    <i class="fa-solid fa-circle-dot mr-2"></i>按住發送
-                </button>
+            <!-- 手動電報拍發區 -->
+            <section id="manualKeySection" class="glass-card p-5 rounded-2xl shadow-sm space-y-4 hidden">
+                <div class="flex items-center justify-between">
+                    <label class="text-sm font-bold text-slate-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-hand-pointer text-cyan-400"></i>
+                        <span>手動電報拍鍵</span>
+                    </label>
+                    <button onclick="openFullScreenKeyer()" class="px-3 py-1 rounded-xl text-xs font-bold bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-600/50 flex items-center gap-1.5 transition-all">
+                        <i class="fa-solid fa-expand"></i> 全螢幕拍發
+                    </button>
+                </div>
+
+                <!-- 裝備與反饋開關 -->
+                <div class="grid grid-cols-3 gap-2">
+                    <button id="toggleManualSound" onclick="setManualSound(!manualSoundOn)" class="py-2.5 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border bg-blue-600/30 text-cyan-300 border-cyan-500/50">
+                        <i class="fa-solid fa-volume-high"></i> <span>電報音 開</span>
+                    </button>
+                    <button id="toggleManualLamp" onclick="setManualLamp(!manualLampOn)" class="py-2.5 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border bg-yellow-600/30 text-yellow-300 border-yellow-500/50">
+                        <i class="fa-solid fa-lightbulb"></i> <span>信號燈 開</span>
+                    </button>
+                    <button id="toggleManualVibe" onclick="setManualVibe(!manualVibeOn)" class="py-2.5 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border bg-purple-600/30 text-purple-300 border-purple-500/50">
+                        <i class="fa-solid fa-mobile-screen"></i> <span>震動 開</span>
+                    </button>
+                </div>
+
+                <!-- 實體風格電報鍵與長短音儀表 -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-[11px] text-slate-400">長短音即時狀態</span>
+                        <span id="manualHoldGauge" class="px-3 py-1 rounded-full text-xs font-mono font-bold border border-slate-700 bg-slate-900/60 text-slate-400">
+                            待機中
+                        </span>
+                    </div>
+
+                    <!-- 長短音進度條 -->
+                    <div class="h-2 w-full rounded-full bg-[#0b1220] border border-slate-800 overflow-hidden">
+                        <div id="manualHoldBar" class="h-full w-0 transition-all bg-gradient-to-r from-blue-500 to-cyan-400"></div>
+                    </div>
+
+                    <!-- 拍發按鍵 -->
+                    <div id="manualKey" class="w-full h-44 rounded-3xl telegraph-key flex flex-col items-center justify-center relative select-none touch-none active:scale-[0.98]">
+                        <div id="manualLampBulb" class="lamp-bulb mb-2 pointer-events-none scale-75">
+                            <i class="fa-solid fa-bolt"></i>
+                        </div>
+                        <div class="text-white font-extrabold text-2xl tracking-wide pointer-events-none flex items-center gap-2">
+                            <i class="fa-solid fa-circle-dot text-cyan-400"></i>
+                            <span>按住拍發</span>
+                        </div>
+                        <div class="text-xs text-slate-400 pointer-events-none mt-1">短按 = 點(·) · 長按 = 劃(−)</div>
+                    </div>
+                </div>
+
+                <!-- 節奏與間隔基準提示 -->
+                <div id="manualRhythmGuide" class="p-2.5 rounded-xl bg-[#0b1220] border border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+                    <span id="guideDotDash">基準：點 ~80ms · 劃 ~240ms</span>
+                    <span class="text-slate-500">停頓 2.2 拍結算字母</span>
+                </div>
+
+                <!-- 輔助控制按鍵 -->
+                <div class="grid grid-cols-4 gap-2 pt-1">
+                    <button onclick="manualBackspace()" class="py-2.5 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95 transition-all">
+                        <i class="fa-solid fa-delete-left mr-1"></i>退格
+                    </button>
+                    <button onclick="manualSpace()" class="py-2.5 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95 transition-all">
+                        <i class="fa-solid fa-arrows-left-right-to-line mr-1"></i>空格
+                    </button>
+                    <button onclick="manualCommitLetter()" class="py-2.5 rounded-xl font-bold text-xs bg-cyan-900/50 hover:bg-cyan-800 text-cyan-300 border border-cyan-700/50 active:scale-95 transition-all">
+                        <i class="fa-solid fa-check mr-1"></i>結算
+                    </button>
+                    <button onclick="clearDecode()" class="py-2.5 rounded-xl font-bold text-xs bg-red-950/50 hover:bg-red-900 text-red-300 border border-red-800/50 active:scale-95 transition-all">
+                        <i class="fa-solid fa-trash mr-1"></i>清除
+                    </button>
+                </div>
             </section>
 
             <!-- Decoded output -->
@@ -338,7 +524,7 @@
             </p>
 
             <!-- 錄音檔離線解碼 -->
-            <section class="glass-card p-5 rounded-2xl shadow-sm space-y-3">
+            <section id="fileDecodeSection" class="glass-card p-5 rounded-2xl shadow-sm space-y-3">
                 <div class="flex items-center justify-between">
                     <label class="text-sm font-bold text-slate-300"><i class="fa-solid fa-file-audio text-cyan-400 mr-1"></i>音檔離線解碼</label>
                     <span class="text-[10px] text-slate-500">所選頻率 · 自動估速</span>
@@ -510,12 +696,12 @@
             <section class="glass-card p-6 rounded-2xl shadow-sm space-y-3">
                 <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sparkles text-yellow-400"></i> V5.0 新功能</h2>
                 <ul class="text-xs text-slate-400 space-y-1.5 list-disc pl-4 leading-relaxed">
+                    <li><b>🆕 擬真手機電報拍鍵 & 即時解碼</b>：運用手機觸控按壓螢幕產生長短音電報音效、信號燈閃光與觸覺震動，即時長短音計時儀表與進度條，自動分段解碼，並支援全螢幕拍發模式、鍵盤空白鍵拍發、退格刪除與空格。</li>
                     <li><b>🆕 摩斯聽力特訓遊戲</b>：8 關卡 × 3 難度，電報音/信號燈雙裝備，連勝計分、限時作答，答對 8 題解鎖下一關（見「遊戲」頁）。</li>
                     <li><b>🆕 聲音解碼引擎 V5</b>：改用取樣時鐘計時＋雙門檻磁滯＋點劃整批分群，修復只能解出 E、長音（劃）完全聽不到的問題。</li>
                     <li><b>🆕 對方速度設定</b>：接收頁可指定對方 WPM 當解碼種子，快慢電碼都更穩。</li>
                     <li><b>循環發送 (Beacon)</b>：訊號可重複播送，並自訂間隔秒數，適合當信標。</li>
                     <li><b>頻道頻率</b>：750 / 1000 / 1500Hz 三頻道，發送與接收同步，不同隊伍可分流。</li>
-                    <li><b>手動拍打鍵</b>：按住大按鈕手動打摩斯，即時解碼，適合練習與人工收發。</li>
                     <li><b>分享/匯出</b>：解碼結果一鍵複製或分享出去。</li>
                     <li><b>Goertzel 精準鎖頻</b>：聲音解碼改用單頻演算法，更準、更抗噪。</li>
                     <li><b>解碼歷史</b>：每次接收自動存檔，可複製、分享、刪除。</li>
@@ -582,6 +768,7 @@
     /* ============================================================
        共用：摩斯對照表 + 反查表
     ============================================================ */
+    // @@PURE-START@@
     const MORSE_MAP = {
         'A':'.-','B':'-...','C':'-.-.','D':'-..','E':'.','F':'..-.','G':'--.','H':'....','I':'..','J':'.---','K':'-.-','L':'.-..',
         'M':'--','N':'-.','O':'---','P':'.--.','Q':'--.-','R':'.-.','S':'...','T':'-','U':'..-','V':'...-','W':'.--','X':'-..-','Y':'-.--','Z':'--..',
@@ -590,6 +777,7 @@
     };
     const REV_MORSE = {};
     for (const k in MORSE_MAP) { if (k !== ' ') REV_MORSE[MORSE_MAP[k]] = k; }
+    // @@PURE-END@@
 
     /* ============================================================
        Tab 切換
@@ -781,6 +969,7 @@
     let offHist = [];              // 最近的 off 段長度（字元內間隔=1u，是最可靠的 unit 來源）
     let letterOns = [];            // 目前正在組的字母、各音段的原始長度（unit 校正後可重判）
     let recvWPM = 0;               // 0 = 自動（以本機發送 WPM 為種子）
+    let sensValue = 50;
     // 自適應雙門檻（磁滯）
     let noiseFloor = 0, peak = 0.15, thrOn = 0.1, thrOff = 0.06;
     const DecUI = { level(){}, state(){}, morse(){}, text(){}, wpm(){} };
@@ -809,13 +998,25 @@
         threshDisp.innerText = ton.toFixed(2) + '/' + toff.toFixed(2);
     };
     DecUI.state = (on) => {
-        signalState.innerText = on ? '● 訊號' : '聆聽中';
+        signalState.innerText = on ? '● 訊號' : (decodeMode === 'manual' ? '拍發中' : '聆聽中');
         signalState.classList.toggle('text-cyan-400', on);
         signalState.classList.toggle('text-green-400', !on);
     };
-    DecUI.morse = (s) => { liveMorse.innerText = s || '—'; };
-    DecUI.text  = (t) => { decodedText.innerText = t.trim() || (listening ? '聆聽中…' : '等待訊號…'); };
-    DecUI.wpm   = (w) => { estWpmEl.innerText = (w && w > 0) ? w : '—'; };
+    DecUI.morse = (s) => {
+        liveMorse.innerText = s || '—';
+        const fs = document.getElementById('fsLiveMorse');
+        if (fs) fs.innerText = s || '—';
+    };
+    DecUI.text  = (t) => {
+        const fallback = listening ? (decodeMode === 'manual' ? '等待拍發…' : '聆聽中…') : '等待訊號…';
+        decodedText.innerText = t.trim() || fallback;
+        const fs = document.getElementById('fsDecodedText');
+        if (fs) fs.innerText = t.trim() || fallback;
+    };
+    DecUI.wpm   = (w) => {
+        estWpmEl.innerText = (w && w > 0) ? w : '—';
+        updateManualRhythmGuide();
+    };
 
     function setDecodeMode(mode){
         if (listening) toggleListen(); // 切換模式先停
@@ -826,16 +1027,30 @@
         document.getElementById('modeManual').className = cls(mode==='manual');
         camPreview.classList.toggle('hidden', mode !== 'light');
         document.getElementById('manualKeySection').classList.toggle('hidden', mode !== 'manual');
-        decodeHint.innerHTML = mode === 'sound'
-            ? '聲音解碼：對準對方喇叭，鎖定所選頻率提示音。V5 引擎：取樣時鐘計時＋雙門檻磁滯，長音（劃）不再漏。'
-            : mode === 'light'
-            ? '光源解碼：把後鏡頭對準閃光來源。先按「開始接收」會請求權限。'
-            : '手動拍打：按住按鈕 = 發訊號，放開 = 停止。短按=點，長按=劃，自動分段解碼。';
+        const sensBox = document.getElementById('sensBox');
+        if (sensBox) sensBox.classList.toggle('hidden', mode === 'manual');
+        const fileSec = document.getElementById('fileDecodeSection');
+        if (fileSec) fileSec.classList.toggle('hidden', mode !== 'sound');
+
+        const listenBtn = document.getElementById('listenBtn');
+        if (mode === 'manual'){
+            if (listenBtn) listenBtn.classList.add('hidden');
+            decodeHint.innerHTML = '手動電報拍鍵：按住按鈕/螢幕發出長短音。短按=點(·)，長按=劃(−)，自動發出電報音、閃光與震動並即時解碼。支援全螢幕拍發與鍵盤空白鍵！';
+            updateManualRhythmGuide();
+            startManualDecode();
+        } else {
+            if (listenBtn) listenBtn.classList.remove('hidden');
+            decodeHint.innerHTML = mode === 'sound'
+                ? '聲音解碼：對準對方喇叭，鎖定所選頻率提示音。V5 引擎：取樣時鐘計時＋雙門檻磁滯，長音（劃）不再漏。'
+                : '光源解碼：把後鏡頭對準閃光來源。先按「開始接收」會請求權限。';
+        }
     }
 
     function clearDecode(){
         currentSymbols = ''; decodedOut = '';
-        liveMorse.innerText = '—'; decodedText.innerText = listening ? '聆聽中…' : '等待訊號…';
+        const fallback = listening ? (decodeMode === 'manual' ? '等待拍發…' : '聆聽中…') : '等待訊號…';
+        liveMorse.innerText = '—'; decodedText.innerText = fallback;
+        updateFsOutput();
     }
 
     function copyDecoded(){
@@ -984,11 +1199,239 @@
         rafId = requestAnimationFrame(lightLoop);
     }
 
+    /* ---------- 手動電報裝備與即時長短音引擎 ---------- */
+    let manualSoundOn = true, manualLampOn = true, manualVibeOn = true;
+    let manualOsc = null, manualGain = null, manualRaf = null;
+
+    function getManualAudioCtx(){
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        return audioCtx;
+    }
+
+    function startManualTone(){
+        if (!manualSoundOn) return;
+        try {
+            const ctx = getManualAudioCtx();
+            const now = ctx.currentTime;
+            if (manualOsc){
+                try { manualOsc.stop(); manualOsc.disconnect(); } catch(e){}
+                manualOsc = null;
+            }
+            manualOsc = ctx.createOscillator();
+            manualGain = ctx.createGain();
+            manualOsc.type = 'sine';
+            manualOsc.frequency.setValueAtTime(toneFreq || 750, now);
+            // 3ms 線性平滑上升，避免開關雜音
+            manualGain.gain.setValueAtTime(0, now);
+            manualGain.gain.linearRampToValueAtTime(0.24, now + 0.003);
+            manualOsc.connect(manualGain);
+            manualGain.connect(ctx.destination);
+            manualOsc.start(now);
+        } catch(e){
+            console.error('startManualTone error:', e);
+        }
+    }
+
+    function stopManualTone(){
+        if (!manualOsc) return;
+        try {
+            if (audioCtx && manualGain){
+                const now = audioCtx.currentTime;
+                manualGain.gain.cancelScheduledValues(now);
+                manualGain.gain.setValueAtTime(manualGain.gain.value, now);
+                manualGain.gain.linearRampToValueAtTime(0, now + 0.004);
+                const oldOsc = manualOsc;
+                setTimeout(() => {
+                    try { oldOsc.stop(); oldOsc.disconnect(); } catch(e){}
+                }, 15);
+            } else {
+                try { manualOsc.stop(); manualOsc.disconnect(); } catch(e){}
+            }
+        } catch(e){}
+        manualOsc = null;
+        manualGain = null;
+    }
+
+    function setManualSound(on){
+        manualSoundOn = on;
+        const btn = document.getElementById('toggleManualSound');
+        const fsBtn = document.getElementById('fsToggleManualSound');
+        const cls = on => on ? 'bg-blue-600/30 text-cyan-300 border-cyan-500/50' : 'bg-slate-800 text-slate-400 border-slate-700';
+        if (btn){
+            btn.className = 'py-2.5 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border ' + cls(on);
+            btn.innerHTML = `<i class="fa-solid ${on ? 'fa-volume-high' : 'fa-volume-xmark'}"></i> <span>電報音 ${on ? '開' : '關'}</span>`;
+        }
+        if (fsBtn){
+            fsBtn.className = 'py-2 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1 border ' + cls(on);
+            fsBtn.innerHTML = `<i class="fa-solid ${on ? 'fa-volume-high' : 'fa-volume-xmark'}"></i> <span>電報音</span>`;
+        }
+    }
+
+    function setManualLamp(on){
+        manualLampOn = on;
+        const btn = document.getElementById('toggleManualLamp');
+        const fsBtn = document.getElementById('fsToggleManualLamp');
+        const cls = on => on ? 'bg-yellow-600/30 text-yellow-300 border-yellow-500/50' : 'bg-slate-800 text-slate-400 border-slate-700';
+        if (btn){
+            btn.className = 'py-2.5 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border ' + cls(on);
+            btn.innerHTML = `<i class="fa-solid ${on ? 'fa-lightbulb' : 'fa-regular fa-lightbulb'}"></i> <span>信號燈 ${on ? '開' : '關'}</span>`;
+        }
+        if (fsBtn){
+            fsBtn.className = 'py-2 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1 border ' + cls(on);
+            fsBtn.innerHTML = `<i class="fa-solid ${on ? 'fa-lightbulb' : 'fa-regular fa-lightbulb'}"></i> <span>信號燈</span>`;
+        }
+    }
+
+    function setManualVibe(on){
+        manualVibeOn = on;
+        const btn = document.getElementById('toggleManualVibe');
+        const fsBtn = document.getElementById('fsToggleManualVibe');
+        const cls = on => on ? 'bg-purple-600/30 text-purple-300 border-purple-500/50' : 'bg-slate-800 text-slate-400 border-slate-700';
+        if (btn){
+            btn.className = 'py-2.5 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all border ' + cls(on);
+            btn.innerHTML = `<i class="fa-solid fa-mobile-screen"></i> <span>震動 ${on ? '開' : '關'}</span>`;
+        }
+        if (fsBtn){
+            fsBtn.className = 'py-2 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1 border ' + cls(on);
+            fsBtn.innerHTML = `<i class="fa-solid fa-mobile-screen"></i> <span>震動</span>`;
+        }
+    }
+
+    function updateManualVisual(active){
+        const keyBtn = document.getElementById('manualKey');
+        const lampBulb = document.getElementById('manualLampBulb');
+        const fsPad = document.getElementById('fsManualPad');
+        const fsLamp = document.getElementById('fsManualLamp');
+        if (keyBtn) keyBtn.classList.toggle('key-pressed', active);
+        if (lampBulb && manualLampOn) lampBulb.classList.toggle('on', active);
+        if (fsPad) fsPad.classList.toggle('pad-pressed', active);
+        if (fsLamp && manualLampOn) fsLamp.classList.toggle('on', active);
+    }
+
+    function trackManualHold(){
+        if (!keyOn) return;
+        const now = performance.now();
+        const held = now - keyDownAt;
+        const mid = (dotAvg + dashAvg) / 2;
+        const isDash = held >= mid;
+
+        const gaugeEl = document.getElementById('manualHoldGauge');
+        const fsGaugeEl = document.getElementById('fsManualHoldGauge');
+        const barEl = document.getElementById('manualHoldBar');
+        const fsBarEl = document.getElementById('fsManualHoldBar');
+
+        const txt = isDash ? `− 劃 (長音) ${Math.round(held)}ms` : `· 點 (短音) ${Math.round(held)}ms`;
+        const cls = isDash ? 'text-amber-400 bg-amber-950/70 border-amber-500' : 'text-cyan-400 bg-cyan-950/70 border-cyan-500';
+        const pct = isDash ? 100 : Math.min(100, Math.round((held / mid) * 100));
+
+        if (gaugeEl){
+            gaugeEl.innerText = txt;
+            gaugeEl.className = 'px-3 py-1 rounded-full text-xs font-mono font-bold border transition-colors ' + cls;
+        }
+        if (fsGaugeEl){
+            fsGaugeEl.innerText = txt;
+            fsGaugeEl.className = 'px-4 py-1.5 rounded-full text-sm font-mono font-bold border transition-colors ' + cls;
+        }
+        if (barEl){
+            barEl.style.width = pct + '%';
+            barEl.className = 'h-full transition-all ' + (isDash ? 'bg-gradient-to-r from-amber-500 to-yellow-400' : 'bg-gradient-to-r from-blue-500 to-cyan-400');
+        }
+        if (fsBarEl){
+            fsBarEl.style.width = pct + '%';
+            fsBarEl.className = 'h-full transition-all ' + (isDash ? 'bg-gradient-to-r from-amber-500 to-yellow-400' : 'bg-gradient-to-r from-blue-500 to-cyan-400');
+        }
+
+        manualRaf = requestAnimationFrame(trackManualHold);
+    }
+
+    function resetManualGauge(){
+        const mid = Math.round((dotAvg + dashAvg) / 2);
+        const gaugeEl = document.getElementById('manualHoldGauge');
+        const fsGaugeEl = document.getElementById('fsManualHoldGauge');
+        const barEl = document.getElementById('manualHoldBar');
+        const fsBarEl = document.getElementById('fsManualHoldBar');
+
+        const txt = `待機中 · 點 <${mid}ms · 劃 ≥${mid}ms`;
+        if (gaugeEl){
+            gaugeEl.innerText = txt;
+            gaugeEl.className = 'px-3 py-1 rounded-full text-xs font-mono font-bold border border-slate-700 bg-slate-900/60 text-slate-400';
+        }
+        if (fsGaugeEl){
+            fsGaugeEl.innerText = txt;
+            fsGaugeEl.className = 'px-4 py-1.5 rounded-full text-sm font-mono font-bold border border-slate-700 bg-slate-900/60 text-slate-400';
+        }
+        if (barEl) barEl.style.width = '0%';
+        if (fsBarEl) fsBarEl.style.width = '0%';
+    }
+
+    function updateManualRhythmGuide(){
+        const guideEl = document.getElementById('guideDotDash');
+        if (guideEl){
+            const d = Math.round(dotAvg);
+            const da = Math.round(dashAvg);
+            const mid = Math.round((dotAvg + dashAvg) / 2);
+            guideEl.innerText = `基準：點 ~${d}ms · 劃 ~${da}ms (分界 ${mid}ms)`;
+        }
+        resetManualGauge();
+    }
+
+    function manualBackspace(){
+        if (currentSymbols.length > 0){
+            currentSymbols = currentSymbols.slice(0, -1);
+            if (letterOns.length > 0) letterOns.pop();
+            DecUI.morse(currentSymbols);
+        } else if (decodedOut.length > 0){
+            decodedOut = decodedOut.slice(0, -1);
+            DecUI.text(decodedOut);
+        }
+        updateFsOutput();
+    }
+
+    function manualSpace(){
+        flushLetter();
+        if (decodedOut.length && !decodedOut.endsWith(' ')){
+            decodedOut += ' ';
+            DecUI.text(decodedOut);
+        }
+        updateFsOutput();
+    }
+
+    function manualCommitLetter(){
+        flushLetter();
+        updateFsOutput();
+    }
+
+    function openFullScreenKeyer(){
+        setDecodeMode('manual');
+        if (!listening) startManualDecode();
+        const modal = document.getElementById('manualFullScreenModal');
+        if (modal){
+            modal.classList.remove('hidden');
+            updateFsOutput();
+            resetManualGauge();
+        }
+    }
+
+    function closeFullScreenKeyer(){
+        const modal = document.getElementById('manualFullScreenModal');
+        if (modal) modal.classList.add('hidden');
+        if (keyOn) manualKeyUp();
+    }
+
+    function updateFsOutput(){
+        const fsMorse = document.getElementById('fsLiveMorse');
+        const fsText = document.getElementById('fsDecodedText');
+        if (fsMorse) fsMorse.innerText = currentSymbols || '—';
+        if (fsText) fsText.innerText = decodedOut.trim() || (listening ? '拍發中…' : '等待拍發…');
+    }
+
     /* ---------- 手動拍打解碼（重複使用同一套狀態機） ---------- */
     let keyOn = false, keyDownAt = 0, manualTimer = null;
     function startManualDecode(){
         resetDecoderState(performance.now());
         setListeningUI(true);
+        updateManualRhythmGuide();
         if (manualTimer) clearInterval(manualTimer);
         manualTimer = setInterval(() => {
             if (!listening) return;
@@ -996,23 +1439,43 @@
         }, 60);
     }
     function manualKeyDown(){
-        if (decodeMode !== 'manual') return;
+        const fsModal = document.getElementById('manualFullScreenModal');
+        const isFs = fsModal && !fsModal.classList.contains('hidden');
+        if (decodeMode !== 'manual' && !isFs) return;
         if (!listening) startManualDecode();
         if (keyOn) return; // 忽略多指重複觸發
         const now = performance.now();
         keyOn = true; keyDownAt = now;
         handleSegment(false, now - stateStart);   // 結算按下前的靜默段
         stateStart = now;
+
+        startManualTone();
+        if (manualVibeOn && navigator.vibrate){
+            try { navigator.vibrate(30); } catch(e){}
+        }
+        updateManualVisual(true);
         DecUI.state(true);
+        levelBar.style.width = '100%';
+        trackManualHold();
     }
     function manualKeyUp(){
         if (!keyOn) return;
         keyOn = false;
+        if (manualRaf){ cancelAnimationFrame(manualRaf); manualRaf = null; }
         const now = performance.now();
         const dur = now - keyDownAt;
-        if (dur >= 25) handleSegment(true, dur); // 忽略極短誤觸
-        stateStart = now;
+
+        stopManualTone();
+        if (manualVibeOn && navigator.vibrate && dur >= 20){
+            try { navigator.vibrate(10); } catch(e){}
+        }
+        updateManualVisual(false);
         DecUI.state(false);
+        levelBar.style.width = '0%';
+
+        if (dur >= 20) handleSegment(true, dur); // 忽略極短誤觸
+        stateStart = now;
+        resetManualGauge();
     }
 
     /* ---------- 共用：訊號 -> 摩斯狀態機（V5） ---------- */
@@ -1185,13 +1648,18 @@
         recvWPM = v;
         document.querySelectorAll('.rwpm-chip').forEach(c => c.classList.toggle('active', parseInt(c.dataset.rwpm) === v));
         reseedTiming();
+        updateManualRhythmGuide();
     }
 
     function stopListen(){
         if (rafId) cancelAnimationFrame(rafId);
         rafId = null;
         if (manualTimer){ clearInterval(manualTimer); manualTimer = null; }
+        if (manualRaf){ cancelAnimationFrame(manualRaf); manualRaf = null; }
         keyOn = false;
+        stopManualTone();
+        updateManualVisual(false);
+        resetManualGauge();
         // 結束時把殘留字母輸出，並存入歷史
         flushLetter();
         commitHistory();
@@ -1811,14 +2279,62 @@
     if (loopOnEl && loopGapBoxEl){
         loopOnEl.addEventListener('change', () => { loopGapBoxEl.style.display = loopOnEl.checked ? 'flex' : 'none'; });
     }
-    // 手動拍打鍵事件
-    const manualKeyEl = document.getElementById('manualKey');
-    if (manualKeyEl){
-        manualKeyEl.addEventListener('pointerdown', e => { e.preventDefault(); manualKeyDown(); });
-        manualKeyEl.addEventListener('pointerup', manualKeyUp);
-        manualKeyEl.addEventListener('pointerleave', manualKeyUp);
-        manualKeyEl.addEventListener('pointercancel', manualKeyUp);
+    // 手動拍打鍵與全螢幕拍鍵事件綁定
+    function bindKeyEvents(el){
+        if (!el) return;
+        el.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            try { el.setPointerCapture(e.pointerId); } catch(err){}
+            manualKeyDown();
+        });
+        el.addEventListener('pointerup', e => {
+            e.preventDefault();
+            try { el.releasePointerCapture(e.pointerId); } catch(err){}
+            manualKeyUp();
+        });
+        el.addEventListener('pointerleave', () => { if (keyOn) manualKeyUp(); });
+        el.addEventListener('pointercancel', () => { if (keyOn) manualKeyUp(); });
     }
+
+    const manualKeyEl = document.getElementById('manualKey');
+    if (manualKeyEl) bindKeyEvents(manualKeyEl);
+
+    const fsPadEl = document.getElementById('fsManualPad');
+    if (fsPadEl) bindKeyEvents(fsPadEl);
+
+    // 鍵盤空白鍵 / Enter 拍發支援
+    window.addEventListener('keydown', e => {
+        const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (tag === 'input' || tag === 'textarea') return;
+        if (e.code === 'Space' || e.key === ' ' || e.code === 'Enter'){
+            const fsModal = document.getElementById('manualFullScreenModal');
+            const isFs = fsModal && !fsModal.classList.contains('hidden');
+            if (decodeMode === 'manual' || isFs){
+                e.preventDefault();
+                manualKeyDown();
+            }
+        } else if (e.code === 'Backspace'){
+            const fsModal = document.getElementById('manualFullScreenModal');
+            const isFs = fsModal && !fsModal.classList.contains('hidden');
+            if (decodeMode === 'manual' || isFs){
+                e.preventDefault();
+                manualBackspace();
+            }
+        }
+    });
+
+    window.addEventListener('keyup', e => {
+        const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (tag === 'input' || tag === 'textarea') return;
+        if (e.code === 'Space' || e.key === ' ' || e.code === 'Enter'){
+            const fsModal = document.getElementById('manualFullScreenModal');
+            const isFs = fsModal && !fsModal.classList.contains('hidden');
+            if (decodeMode === 'manual' || isFs){
+                e.preventDefault();
+                manualKeyUp();
+            }
+        }
+    });
 
     setWPM(15);
     setFreq(750);

@@ -1066,7 +1066,7 @@
     }
 
     // 靈敏度滑桿：影響門檻高度
-    let sensFactor = 1.0, sensValue = 50;
+    let sensFactor = 1.0;   // sensValue 已於上方宣告（避免重複宣告造成 SyntaxError）
     sensSlider.addEventListener('input', () => {
         // 0 -> 0.5x (敏感), 100 -> 1.8x (嚴格)
         sensValue = +sensSlider.value;

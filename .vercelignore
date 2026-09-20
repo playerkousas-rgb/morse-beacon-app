@@ -1,0 +1,51 @@
+# ==============================================================
+# .vercelignore — Vercel 部署上傳排除清單（gitignore 語法）
+# 列在這裡的檔案／資料夾「不會」被上傳到 Vercel，直接節省部署空間配額。
+# 本專案為純靜態 PWA（無建置步驟），根目錄即為最終網頁產物；
+# 排除以下非網頁產物後，部署內容 = index.html + manifest + sw.js
+# + 3 個圖示 + assets/（CSS 與字型），其餘一概不上傳。
+# ==============================================================
+
+# --- 版控與本機工具資料夾（絕不上傳）---
+.git
+.gitignore
+.vercel
+.vercelignore
+
+# --- 套件依賴（本專案零 npm 依賴，此為防護性條目，防止未來誤裝後整包上傳）---
+node_modules
+
+# --- 測試／暫存上傳資料夾（歷史遺留的重複內容，已在 repo 中刪除，此處防再生）---
+morse-beacon-local-assets-upload
+uploads
+
+# --- 備份檔、暫存檔、日誌檔 ---
+*.bak
+*.tmp
+*.old
+*.log
+*.swp
+*.zip
+
+# --- 作業系統垃圾檔 ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- 建置產物／快取資料夾（本專案無建置步驟；若未來在本機產生，避免重複上傳）---
+dist
+build
+out
+.cache
+.vite
+.next
+.turbo
+
+# --- 開發用原始檔（非網頁產物：tailwind.min.css 才是編譯結果）---
+assets/css/tailwind.input.css
+
+# --- 開發工具與說明文件（非網頁產物）---
+scripts
+README.md
+部署說明.md
+上傳說明.txt

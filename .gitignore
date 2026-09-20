@@ -1,0 +1,25 @@
+# 依賴（本專案零 npm 依賴；防止未來誤提交）
+node_modules/
+
+# 備份／暫存／日誌檔
+*.bak
+*.tmp
+*.old
+*.log
+*.swp
+*.zip
+
+# 作業系統垃圾檔
+.DS_Store
+Thumbs.db
+
+# Vercel CLI 本機連結資料夾（含專案連結與部署快取，勿提交）
+.vercel/
+
+# 測試上傳暫存資料夾
+uploads/
+
+# 建置產物（本專案為純靜態、無建置步驟；防止未來誤提交）
+dist/
+build/
+out/

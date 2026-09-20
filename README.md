@@ -15,6 +15,8 @@
 
 上傳 `index.html`、`manifest.webmanifest`、`sw.js`、`icon-192.png`、`icon-512.png`、`icon-512-maskable.png` 與 `assets/` 到 GitHub，再以 Vercel 自動部署即可。詳見 `部署說明.md`。
 
+> 專案已內建 `.vercelignore`：Vercel 部署只會上傳必要網頁產物（文件、`.git`、`node_modules`、備份檔等一律排除），不會佔用多餘的儲存空間配額。
+
 ## 版權
 
 COPYRIGHT © 2026 SCOUT SYSTEM

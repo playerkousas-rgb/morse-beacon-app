@@ -60,7 +60,8 @@ const clean = (u) => u.trim().replace(/^\.\//, '').split(/[?#]/)[0];
 const refs = new Set();
 for (const m of html.matchAll(/(?:href|src)\s*=\s*["']([^"']+)["']/g)) {
   const u = m[1];
-  if (!/^(https?:|data:|blob:|mailto:|tel:|#)/i.test(u)) refs.add(clean(u));
+  // Skip external URLs, data URLs, and Vercel-provided scripts
+  if (!/^(https?:|data:|blob:|mailto:|tel:|#|^\/_vercel\/)/i.test(u)) refs.add(clean(u));
 }
 // JS 內以字串引用的本地資源（如 './sw.js'）
 for (const m of html.matchAll(/["'](\.\/[^"']+?\.(?:js|css|png|webmanifest|json|woff2?|ttf|svg|jpe?g|webp))["']/gi)) {

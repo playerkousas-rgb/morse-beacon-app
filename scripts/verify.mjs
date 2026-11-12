@@ -25,6 +25,7 @@
  *  17) 無障礙：表單 label 有 for=、動態輸出有 aria-live、分頁有 role/aria-selected
  *  18) 危險動作：發送前有倒數＋可取消；UI 有免責聲明
  *  19) 體積預算：部署 payload ≤ 1.0 MB（防止字型／圖檔靜靜變肥）
+ *  20) 螢幕常亮（Wake Lock）：有取／有放、隱藏後會重取、失敗要靜靜降級、iOS 限制要講明
  *
  * 執行：node scripts/verify.mjs   （任一檢查失敗即以 exit 1 結束）
  */
@@ -516,12 +517,32 @@ bigFiles.length === 0
   ? ok('冇單一部署檔案 > 500 KB（S6）')
   : bad(`單檔超過 500 KB：${bigFiles.map((p) => toRel(p)).join(', ')}`);
 
+/* ---------- 20. 螢幕常亮（Screen Wake Lock）---------- */
+section('20. 螢幕常亮（Wake Lock）：接收時唔鎖屏');
+const WL = [
+  [/navigator\.wakeLock\.request\('screen'\)/, '有 request(\'screen\') 取鎖'],
+  [/sentinel\.release\(\)|\.release\(\)/, '有 release() 放鎖'],
+  [/addEventListener\('release'/, '有聽 release 事件（被系統釋放要知）'],
+  [/visibilitychange[\s\S]{0,160}wakeLockWanted[\s\S]{0,120}acquireWakeLock/, '頁面回前景會主動重取（瀏覽器一定會幫你釋放）'],
+  [/catch\s*\([^)]*\)\s*\{[\s\S]{0,600}?return false;/, '取鎖失敗有 catch（F4 fail-open，唔會阻住解碼）'],
+  [/'wakeLock' in navigator/, '有特性檢測（舊機唔會炸）'],
+  [/iosStandaloneMayFail/, '有 iOS 主畫面（<18.4）限制處理'],
+  [/id="wakeLockStatus"/, '有狀態列（用戶要知到底保唔保持得到）'],
+  [/id="wakeOn"/, '有開關（唔想食電可以關）'],
+  [/wakeLockWanted = on;[\s\S]{0,120}releaseWakeLock\(\)/, '停止接收會放鎖（唔會偷偷食電）'],
+];
+for (const [rx, label] of WL) (rx.test(html) ? ok(label) : bad(`Wake Lock：${label}`));
+// 硬性：唔准用 NoSleep.js 式「無限靜音影片」hack（真理倉零依賴原則）
+/NoSleep|\.play\(\)[\s\S]{0,40}loop/.test(html) && /silent.*mp4|nosleep/i.test(html)
+  ? bad('見到 NoSleep.js 式靜音影片 hack（本專案零依賴，唔准）')
+  : ok('冇用第三方 NoSleep.js／靜音影片 hack（保持零依賴）');
+
 /* ---------- 總結 ---------- */
 section('總結');
 if (failed) {
   console.error(`\n❌ 共 ${failed} 項檢查失敗，請修正後再部署。`);
   process.exit(1);
 }
-console.log('\n✅ 全部檢查通過（19 組）：產物完整、引用零 404、語法零錯誤、無垃圾檔、payload 精簡、');
+console.log('\n✅ 全部檢查通過（20 組）：產物完整、引用零 404、語法零錯誤、無垃圾檔、payload 精簡、');
 console.log('   核心功能零倒退、圖標合規、版號同步、PWA 安裝／更新合規、防呆、XSS escape、');
-console.log('   hidden 收得起、無障礙、發送倒數、體積預算。');
+console.log('   hidden 收得起、無障礙、發送倒數、體積預算、螢幕常亮。');

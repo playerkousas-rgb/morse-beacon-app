@@ -1,11 +1,11 @@
-/* Scout Morse Service Worker — v5.2.0 · COPYRIGHT © 2026 SCOUT SYSTEM
+/* Scout Morse Service Worker — v5.3.0 · COPYRIGHT © 2026 SCOUT SYSTEM
    策略（PLAYBOOK I1–I8 / UP1–UP5）：
      · install 只喺「首次安裝」（未有 active SW）才 skipWaiting()；之後嘅更新留在 waiting，
        等用戶喺畫面上按「立即更新」才接手（唔准玩到一半偷換版）。
      · activate 清舊快取 + clients.claim()。
      · 導覽（HTML）network-first，靜態資源 stale-while-revalidate。
      · 版本號＝快取名；每次改版必須同步 index.html（meta app-version）／manifest／本檔。 */
-const APP_VERSION = 'v5.2.0';
+const APP_VERSION = 'v5.3.0';
 const CACHE = 'scout-morse-' + APP_VERSION;
 const ASSETS = [
   './',

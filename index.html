@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <!-- 版本：v5.2.0 · COPYRIGHT © 2026 SCOUT SYSTEM -->
+    <!-- 版本：v5.3.0 · COPYRIGHT © 2026 SCOUT SYSTEM -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0b1220">
-    <meta name="app-version" content="v5.2.0">
+    <meta name="app-version" content="v5.3.0">
     <meta name="copyright" content="© 2026 SCOUT SYSTEM">
     <meta name="description" content="摩斯密碼發送與接收解碼 PWA：螢幕閃光／實體閃光燈／蜂鳴／震動發送、聲音（Goertzel）與光源解碼、手動電報拍鍵、聽力特訓遊戲。可加到主畫面離線使用。">
-    <title>Scout Morse 發訊器 v5.2.0 — © SCOUT SYSTEM</title>
+    <title>Scout Morse 發訊器 v5.3.0 — © SCOUT SYSTEM</title>
 
     <!-- PWA -->
     <link rel="manifest" href="manifest.webmanifest">
@@ -22,7 +22,7 @@
 
     <!-- 分享預覽（og:image 必須用絕對網址） -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Scout Morse 發訊器 v5.2.0">
+    <meta property="og:title" content="Scout Morse 發訊器 v5.3.0">
     <meta property="og:description" content="摩斯密碼發送與接收解碼（聲音／光源／手動拍鍵）＋聽力特訓。可加到主畫面離線使用。">
     <meta property="og:image" content="https://morse-beacon-app.vercel.app/icons/og-image.png">
     <meta property="og:image:width" content="1200">
@@ -556,6 +556,19 @@
                     <button onclick="shareDecoded()" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg"><i class="fa-solid fa-share-nodes mr-1"></i>分享</button>
                     <button id="autoWpm" type="button" onclick="reseedTiming();customAlert('已按目前估算重新校正速度基準')" title="解唔到或亂碼時，撳一下重新校正速度基準" aria-label="重新校正速度基準（解唔到時撳）" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400">速度 <span id="estWpm">—</span></button>
                 </div>
+                <!-- 螢幕常亮（Wake Lock）：接收期間手機唔會變暗／鎖屏 -->
+                <div class="flex items-center justify-between pt-1">
+                    <span class="text-[10px] text-slate-400">
+                        <i class="fa-solid fa-sun mr-1" aria-hidden="true"></i>接收時保持螢幕開啟
+                    </span>
+                    <label class="relative inline-block w-10 h-5" for="wakeOn">
+                        <input type="checkbox" id="wakeOn" checked onclick="setWakeLockEnabled(this.checked)"
+                               aria-label="接收時保持螢幕開啟"
+                               class="toggle-checkbox absolute appearance-none w-10 h-5 bg-slate-700 rounded-full cursor-pointer transition-colors outline-none focus:ring-2 focus:ring-cyan-400">
+                    </label>
+                </div>
+                <p id="wakeLockStatus" role="status" aria-live="polite"
+                   class="hidden text-[10px] leading-relaxed rounded-lg px-2.5 py-2 border"></p>
             </section>
 
             <button id="listenBtn" onclick="toggleListen()" class="w-full bg-green-600 hover:bg-green-700 text-white font-extrabold py-4 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95">
@@ -729,7 +742,21 @@
                         <i class="fa-solid fa-rotate-right mr-1" aria-hidden="true"></i>檢查更新
                     </button>
                 </div>
-                <p class="text-[10px] text-slate-500 text-center">目前版本 <span id="appVersionLabel">v5.2.0</span> · 離線可用 · <span id="swStatusLabel">Service Worker：檢查中…</span></p>
+                <p class="text-[10px] text-slate-500 text-center">目前版本 <span id="appVersionLabel">v5.3.0</span> · 離線可用 · <span id="swStatusLabel">Service Worker：檢查中…</span></p>
+            </section>
+            <section class="glass-card p-6 rounded-2xl shadow-sm space-y-3">
+                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sun text-amber-400" aria-hidden="true"></i> 螢幕保持開啟（接收時唔鎖屏）</h2>
+                <p class="text-xs text-slate-400 leading-relaxed">開始接收時，App 會向系統申請「螢幕常亮」，令手機唔會喺解碼途中變暗或鎖屏（鎖屏＝相機／收音即刻停，解到一半會斷）。</p>
+                <div class="space-y-2 text-xs">
+                    <div class="flex items-start justify-between gap-3"><span class="text-slate-300">Android Chrome／Edge</span><span class="text-green-400 font-bold shrink-0">✓ 支援</span></div>
+                    <div class="flex items-start justify-between gap-3"><span class="text-slate-300">iPhone／iPad（Safari 分頁，16.4+）</span><span class="text-green-400 font-bold shrink-0">✓ 支援</span></div>
+                    <div class="flex items-start justify-between gap-3"><span class="text-slate-300">iPhone「已加到主畫面」（iOS 18.3 或以下）</span><span class="text-yellow-400 font-bold shrink-0">△ 無效</span></div>
+                    <div class="flex items-start justify-between gap-3"><span class="text-slate-300">Firefox 126+／桌面瀏覽器</span><span class="text-green-400 font-bold shrink-0">✓ 支援</span></div>
+                </div>
+                <p class="text-[10px] text-slate-500 leading-relaxed pt-1">
+                    ※ iOS 18.3 或以下嘅「主畫面模式」有系統限制（WebKit 已知問題），App 會即時喺接收頁標明。
+                    呢個情況下請去「<b>設定 → 螢幕與亮度 → 自動鎖定</b>」把時間調長（例如 5 分鐘或「永不」），一樣可以連續解碼。
+                </p>
             </section>
             <section class="glass-card p-6 rounded-2xl shadow-sm space-y-3">
                 <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-bolt text-yellow-400"></i> 實體閃光燈相容性</h2>
@@ -745,8 +772,9 @@
                 <p class="text-[10px] text-slate-500 leading-relaxed pt-1">※ 需符合：HTTPS、後鏡頭具 LED、且使用者允許相機權限。不支援時請改用「螢幕閃光」。</p>
             </section>
             <section class="glass-card p-6 rounded-2xl shadow-sm space-y-3">
-                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sparkles text-yellow-400" aria-hidden="true"></i> v5.2.0 更新內容</h2>
+                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sparkles text-yellow-400" aria-hidden="true"></i> v5.3.0 更新內容</h2>
                 <ul class="text-xs text-slate-400 space-y-1.5 list-disc pl-4 leading-relaxed">
+                    <li><b>🆕 接收時螢幕保持開啟</b>（Wake Lock）：光源／聲音解碼期間唔會再自動變暗鎖屏。接收頁可一鍵關閉。</li>
                     <li><b>🔧 修正：教學卡唔會再自己彈出</b>（之前一開頁會被「加到主畫面」卡片蓋住、關唔走；現已修好）。</li>
                     <li><b>🆕 發送前 3 秒倒數</b>：倒數期唔會開燈／響聲，撳「停止」即時取消，避免誤按廣播。</li>
                     <li><b>🆕 底部 Tab 會記住位置</b>：網址加 <code>#decode</code> 等，reload 或分享都停在同一頁；讀屏／鍵盤可正常操作。</li>
@@ -786,12 +814,12 @@
                 </ul>
             </section>
             <footer class="text-center py-4">
-                <p class="text-[10px] font-bold text-slate-600 tracking-widest uppercase">COPYRIGHT © 2026 SCOUT SYSTEM · v5.2.0</p>
+                <p class="text-[10px] font-bold text-slate-600 tracking-widest uppercase">COPYRIGHT © 2026 SCOUT SYSTEM · v5.3.0</p>
             </footer>
         </div>
 
         <!-- 全頁版權 -->
-        <p class="text-center text-[10px] font-bold text-slate-600 tracking-widest uppercase pt-2">COPYRIGHT © 2026 SCOUT SYSTEM · v5.2.0</p>
+        <p class="text-center text-[10px] font-bold text-slate-600 tracking-widest uppercase pt-2">COPYRIGHT © 2026 SCOUT SYSTEM · v5.3.0</p>
     </div>
 
     <!-- ============ BOTTOM TAB BAR ============ -->
@@ -1314,6 +1342,9 @@
 
     function setListeningUI(on){
         listening = on;
+        // 接收期間要保持螢幕常亮；停止接收（或用戶切走）即刻釋放，唔好偷偷食電
+        wakeLockWanted = on;
+        if (on) acquireWakeLock(); else releaseWakeLock();
         listenBtn.classList.toggle('listening', on);
         listenBtn.innerHTML = on
             ? '<i class="fa-solid fa-stop"></i> 停止接收'
@@ -1327,6 +1358,118 @@
         signalState.classList.toggle('text-slate-400', !on);
         if (on){ decodedText.innerText = decodedOut.trim() || '聆聽中…'; }
     }
+
+    /* ============================================================
+       螢幕常亮（Screen Wake Lock API）
+       為甚麼需要：光源解碼要手機擺定對住對方閃光、聲音解碼要長時間「聆聽」，
+       期間用戶唔會掂螢幕 → 系統十幾秒就變暗再鎖屏 → 相機／收音被切斷，解到一半斷。
+       規則（F4 fail-open）：取唔到鎖唔可以阻住解碼，一律靜靜降級。
+       ⚠️ iOS 16.4–18.3：Safari 分頁有效，但「加到主畫面」嘅 PWA 無效（WebKit 254545），
+          18.4 才修好 → 所以仍要提示用戶手動調高自動鎖屏時間，唔可以只靠呢個。
+    ============================================================ */
+    let wakeLockSentinel = null;
+    let wakeLockWanted = false;      // 用戶「想」要保持常亮（接收中）
+    let wakeLockSupported = null;    // null = 未測
+    let wakeLockEnabled = true;      // 用戶偏好（可在說明頁關閉）
+
+    const isIosDevice = () => /iphone|ipad|ipod/i.test(navigator.userAgent || '')
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    // iOS 主畫面模式（standalone）＋ 版本 < 18.4 → 官方 API 無效，要老實講
+    const iosStandaloneMayFail = () => {
+        if (!isIosDevice() || !isStandalone()) return false;
+        const m = (navigator.userAgent || '').match(/OS (\d+)[._](\d+)/);
+        if (!m) return true;                      // 讀唔到版本：當佢可能失效（保守）
+        const major = +m[1], minor = +m[2];
+        return major < 18 || (major === 18 && minor < 4);
+    };
+
+    function setWakeLockStatus(kind, msg){
+        const el = document.getElementById('wakeLockStatus');
+        if (!el) return;
+        const styles = {
+            on:   'border-emerald-600/50 bg-emerald-500/10 text-emerald-300',
+            warn: 'border-amber-500/40 bg-amber-500/10 text-amber-200',
+            off:  'border-slate-700 bg-slate-800/40 text-slate-400',
+        };
+        el.className = 'text-[10px] leading-relaxed rounded-lg px-2.5 py-2 border ' + (styles[kind] || styles.off);
+        el.innerHTML = '<i class="fa-solid fa-' + (kind === 'on' ? 'sun' : kind === 'warn' ? 'triangle-exclamation' : 'circle-info')
+            + ' mr-1" aria-hidden="true"></i>' + msg;
+    }
+
+    async function acquireWakeLock(){
+        if (!wakeLockWanted || !wakeLockEnabled) return false;
+        // 已經持有（或瀏覽器幫我釋放咗 → sentinel.released 為 true）
+        if (wakeLockSentinel && !wakeLockSentinel.released) return true;
+
+        if (!('wakeLock' in navigator)){
+            wakeLockSupported = false;
+            setWakeLockStatus('warn',
+                '此瀏覽器唔支援螢幕常亮：請到系統設定把「自動鎖定」時間調長（例如 5 分鐘或永不）。');
+            return false;
+        }
+        wakeLockSupported = true;
+
+        if (iosStandaloneMayFail()){
+            // 早啲講清楚，唔好扮成功
+            setWakeLockStatus('warn',
+                'iOS 主畫面模式（18.4 之前）唔支援螢幕常亮。請到「設定 → 螢幕與亮度 → 自動鎖定」調長。');
+            return false;
+        }
+        try {
+            wakeLockSentinel = await navigator.wakeLock.request('screen');
+            wakeLockSentinel.addEventListener('release', () => {
+                wakeLockSentinel = null;
+                // 被系統釋放（多數係切咗背景）：唔好報錯，等回前景再取
+                if (wakeLockWanted && document.visibilityState === 'visible') acquireWakeLock();
+                else if (!wakeLockWanted) setWakeLockStatus('off', '螢幕常亮已關閉。');
+            });
+            setWakeLockStatus('on', '接收期間螢幕保持開啟（唔會自動變暗或鎖屏）。');
+            return true;
+        } catch (err) {
+            // NotAllowedError（頁面不可見／省電模式）／NotSupportedError 等：靜靜降級
+            wakeLockSentinel = null;
+            const why = (err && err.name === 'NotAllowedError')
+                ? '系統暫時唔批准（可能處於省電模式或頁面在背景）'
+                : '瀏覽器拒絕';
+            setWakeLockStatus('warn',
+                why + '：螢幕仍可能自動鎖屏，請把系統「自動鎖定」時間調長。');
+            return false;
+        }
+    }
+
+    function setWakeLockEnabled(on){
+        wakeLockEnabled = !!on;
+        const p = loadPref(); p.wakeOn = wakeLockEnabled; savePref(p);
+        const cb = document.getElementById('wakeOn');
+        if (cb) cb.checked = wakeLockEnabled;
+        if (!wakeLockEnabled){
+            releaseWakeLock();
+            setWakeLockStatus('off', '已關閉螢幕常亮：長時接收可能被系統鎖屏中斷。');
+        } else if (wakeLockWanted){
+            acquireWakeLock();
+        } else {
+            const el = document.getElementById('wakeLockStatus');
+            if (el) el.classList.add('hidden');
+        }
+    }
+
+    async function releaseWakeLock(){
+        wakeLockWanted = false;
+        const sentinel = wakeLockSentinel;
+        wakeLockSentinel = null;
+        if (sentinel && !sentinel.released){
+            try { await sentinel.release(); } catch (e) {}
+        }
+        const el = document.getElementById('wakeLockStatus');
+        if (el) el.classList.add('hidden');
+    }
+
+    // 瀏覽器一定會喺頁面隱藏時自動釋放 → 回前景要主動重取（真機最常見嘅漏鎖原因）
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && wakeLockWanted && !wakeLockSentinel){
+            acquireWakeLock();
+        }
+    });
 
     /* ---------- 聲音解碼（Goertzel 單頻鎖定 + 取樣時鐘計時）----------
        只計算目標頻率的能量（單頻 DFT），再用「佔寬頻總能量比例」當訊號強度。
@@ -2224,7 +2367,7 @@
        PWA：安裝入口（I1–I8）+ 版本更新（UP1–UP5）
        一句原則：「安裝要有掣、更新要問過人」
     ============================================================ */
-    const APP_VERSION = 'v5.2.0';
+    const APP_VERSION = 'v5.3.0';
 
     // 防禦式：舊 WebView 冇 matchMedia 時唔應該拋錯（會令後面成個初始化腳本停擺）
     const isStandalone = () => {
@@ -2607,6 +2750,8 @@
         const pref = loadPref();
         const theme = pref.theme || 'dark';
         const font = pref.font || 100;
+        // 螢幕常亮預設開（接收時最需要）；用戶有一次關閉權
+        if (typeof pref.wakeOn === 'boolean') wakeLockEnabled = pref.wakeOn;
         document.querySelectorAll('#themeSel button').forEach(b=>{
             b.addEventListener('click', ()=>{ const p=loadPref(); p.theme=b.dataset.theme; savePref(p); applyTheme(b.dataset.theme); });
         });

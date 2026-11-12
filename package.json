@@ -1,7 +1,7 @@
 {
   "name": "morse-beacon-app",
   "private": true,
-  "version": "5.2.0",
+  "version": "5.3.0",
   "type": "module",
   "description": "Scout Morse 發訊器 — 摩斯密碼發送／接收解碼 PWA（純靜態、零依賴）",
   "license": "SEE LICENSE IN LICENSE",

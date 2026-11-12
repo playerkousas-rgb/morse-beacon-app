@@ -1,4 +1,4 @@
-# Scout Morse 發訊器 v5.2.0
+# Scout Morse 發訊器 v5.3.0
 
 摩斯密碼發送與接收解碼 **PWA**（可「加到主畫面」當 App 用，免上架）。純靜態、零依賴、離線可用。
 
@@ -22,6 +22,7 @@ COPYRIGHT © 2026 SCOUT SYSTEM · 授權見 [LICENSE](LICENSE)
 | 📤 分享／匯出 | 解碼結果複製、原生分享 |
 | 📚 速查表 / 音檔離線解碼 | 點 A–Z、0–9 發聲；上傳錄音離線解碼 |
 | 📱 PWA | 安裝入口（Android 系統對話框／iOS 三步教學卡）＋「立即更新／稍後」版本提示 |
+| ☀️ 螢幕常亮 | 接收時向系統申請 Wake Lock，長時解碼唔會中途鎖屏；接收頁可一鍵關閉 |
 | ♿ 無障礙 | 所有表單 label 有 `for`／chips 有 `role=group`；解碼結果 `aria-live`；分頁 `role=tab`＋`aria-selected` |
 
 ## 2. 檔案
@@ -53,7 +54,7 @@ npm test                         # 兩支一齊跑
 用合成正弦波餵 Goertzel→狀態機，比對文字。**種子準確時 48 條組合 100% 全對**；
 亦已記錄「種子估錯 ≥2 倍」時的真實輸出（見 §5）。
 
-19 組檢查：
+20 組檢查：
 
 1. 必要網頁產物齊全
 2. `index.html` 本地引用零 404
@@ -74,6 +75,7 @@ npm test                         # 兩支一齊跑
 17. **無障礙**：`label` 有 `for=`（或群組 `aria-labelledby`）、動態輸出有 `aria-live`、分頁有 `role=tab`／`aria-selected`／`aria-controls`
 18. **危險動作**：發送前倒數＋可取消、倒數後才開硬件、UI 有免責聲明
 19. **體積預算**：payload ≤ 1.0 MB、無單檔 > 500 KB
+20. **螢幕常亮（Wake Lock）**：有取／有放、頁面隱藏後會重取、失敗要靜靜降級（唔准阻住解碼）、iOS 主畫面限制要有處理、唔准用 NoSleep.js 式 hack
 
 CI：`.github/workflows/verify.yml`（Actions 已釘 commit SHA）每次 push／PR／每週一跑同一條。
 
@@ -99,6 +101,9 @@ CI：`.github/workflows/verify.yml`（Actions 已釘 commit SHA）每次 push／
 - 本 App 冇後端、冇帳號、冇追蹤；分析只有 Vercel Web Analytics／Speed Insights（匿名字段）。
 - **解碼速度種子**：若不知對方速度而估錯 ≥2 倍，第一個字母可能解錯（之後會自動校正）。
   UI 已提示：揀接近的「對方速度」，或撳「速度」掣即時重新校正。
+- **螢幕常亮（Wake Lock）**：Chrome/Edge 84+、Safari 16.4+、Firefox 126+。
+  ⚠️ iOS 16.4–18.3 的「已加到主畫面」模式**無效**（WebKit 已知問題，18.4 才修）；
+  這種情況 App 會在接收頁即時標明，並請你手動把「設定 → 螢幕與亮度 → 自動鎖定」調長。
 - **未做英文介面**：真理倉 `docs/44` 嘅 L 系列只適用於 2026-11-08 之後新開嘅 app，本 app 屬豁免；建議下次大版補。
 
 ## 6. 版權與第三方

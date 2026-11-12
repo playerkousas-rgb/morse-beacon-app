@@ -1,17 +1,33 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
+    <!-- 版本：v5.1.0 · COPYRIGHT © 2026 SCOUT SYSTEM -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0b1220">
-    <title>Scout Morse 發訊器</title>
+    <meta name="app-version" content="v5.1.0">
+    <meta name="copyright" content="© 2026 SCOUT SYSTEM">
+    <meta name="description" content="摩斯密碼發送與接收解碼 PWA：螢幕閃光／實體閃光燈／蜂鳴／震動發送、聲音（Goertzel）與光源解碼、手動電報拍鍵、聽力特訓遊戲。可加到主畫面離線使用。">
+    <title>Scout Morse 發訊器 v5.1.0 — © SCOUT SYSTEM</title>
 
     <!-- PWA -->
     <link rel="manifest" href="manifest.webmanifest">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Scout Morse">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" href="icons/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+
+    <!-- 分享預覽（og:image 必須用絕對網址） -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Scout Morse 發訊器 v5.1.0">
+    <meta property="og:description" content="摩斯密碼發送與接收解碼（聲音／光源／手動拍鍵）＋聽力特訓。可加到主畫面離線使用。">
+    <meta property="og:image" content="https://morse-beacon-app.vercel.app/icons/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
 
     <!-- Vercel Web Analytics -->
     <script>
@@ -238,8 +254,9 @@
                 <h1 class="text-3xl font-extrabold tracking-tight text-white">Scout Morse</h1>
                 <p class="text-[#9fb0d6] text-sm mt-1 font-medium italic">Signal Beacon &amp; Decoder</p>
             </div>
-            <button id="installBtn" class="hidden bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-xl">
-                <i class="fa-solid fa-download mr-1"></i>安裝
+            <button id="installBtn" type="button" aria-label="加入主畫面（安裝成 App）"
+                    class="hidden bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-400">
+                <i class="fa-solid fa-download mr-1" aria-hidden="true"></i>加入主畫面
             </button>
         </header>
 
@@ -686,11 +703,20 @@
                 <h2 class="text-xl font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-mobile-screen-button text-blue-500"></i> 安裝成 App（免上架）</h2>
                 <p class="text-[#9fb0d6] text-sm leading-relaxed">本頁就是 PWA，可直接「加到主畫面」當 App 用，免安裝、免上架、免費。</p>
                 <div class="space-y-2 text-sm text-slate-300">
-                    <p class="font-bold text-blue-400"><i class="fa-brands fa-android mr-1"></i> Android (Chrome)</p>
-                    <p class="text-xs text-slate-400 leading-relaxed">右上角 ⋮ → 「加到主畫面 / 安裝應用程式」。或點右上「安裝」按鈕。</p>
-                    <p class="font-bold text-blue-400 pt-2"><i class="fa-brands fa-apple mr-1"></i> iPhone (Safari)</p>
-                    <p class="text-xs text-slate-400 leading-relaxed">底部「分享」→ 「加入主畫面」。接收解碼、聲音、螢幕閃光皆可用。實體閃光燈需 iOS 17.4 以上的 Safari。</p>
+                    <p class="font-bold text-blue-400"><i class="fa-brands fa-android mr-1" aria-hidden="true"></i> Android (Chrome)</p>
+                    <p class="text-xs text-slate-400 leading-relaxed">右上角 ⋮ → 「加到主畫面 / 安裝應用程式」。或點右上「加入主畫面」掣。</p>
+                    <p class="font-bold text-blue-400 pt-2"><i class="fa-brands fa-apple mr-1" aria-hidden="true"></i> iPhone / iPad (Safari)</p>
+                    <p class="text-xs text-slate-400 leading-relaxed">底部「分享」→ 「加入主畫面」。接收解碼、聲音、螢幕閃光皆可用。實體閃光燈需 iOS 17.4 以上的 Safari；其他 iOS 瀏覽器（Chrome／Edge／Firefox）都係 WebKit，一樣行「分享 → 加入主畫面」。</p>
                 </div>
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button id="installBtn2" type="button" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-400">
+                        <i class="fa-solid fa-download mr-1" aria-hidden="true"></i>加入主畫面
+                    </button>
+                    <button id="checkUpdateBtn" type="button" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-3 rounded-xl">
+                        <i class="fa-solid fa-rotate-right mr-1" aria-hidden="true"></i>檢查更新
+                    </button>
+                </div>
+                <p class="text-[10px] text-slate-500 text-center">目前版本 <span id="appVersionLabel">v5.1.0</span> · 離線可用 · <span id="swStatusLabel">Service Worker：檢查中…</span></p>
             </section>
             <section class="glass-card p-6 rounded-2xl shadow-sm space-y-3">
                 <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-bolt text-yellow-400"></i> 實體閃光燈相容性</h2>
@@ -706,9 +732,13 @@
                 <p class="text-[10px] text-slate-500 leading-relaxed pt-1">※ 需符合：HTTPS、後鏡頭具 LED、且使用者允許相機權限。不支援時請改用「螢幕閃光」。</p>
             </section>
             <section class="glass-card p-6 rounded-2xl shadow-sm space-y-3">
-                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sparkles text-yellow-400"></i> V5.0 新功能</h2>
+                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sparkles text-yellow-400" aria-hidden="true"></i> v5.1.0 更新內容</h2>
                 <ul class="text-xs text-slate-400 space-y-1.5 list-disc pl-4 leading-relaxed">
-                    <li><b>🆕 擬真手機電報拍鍵 & 即時解碼</b>：運用手機觸控按壓螢幕產生長短音電報音效、信號燈閃光與觸覺震動，即時長短音計時儀表與進度條，自動分段解碼，並支援全螢幕拍發模式、鍵盤空白鍵拍發、退格刪除與空格。</li>
+                    <li><b>🆕 安裝入口</b>：右上角「加入主畫面」掣；iPhone 會出 Safari 三步教學卡，Android 用系統對話框；已安裝後自動收起。</li>
+                    <li><b>🆕 版本更新提示</b>：偵測到新版本會出 banner「立即更新／稍後」，更新唔會偷換版、解碼歷史與遊戲進度都保留。</li>
+                    <li><b>🆕 App 圖標同分享預覽</b>：全套 9 個圖標（maskable 安全區）、WhatsApp/FB 連結預覽圖。</li>
+                    <li><b>🆕 無障礙同防呆</b>：所有對話框有 role/aria、Esc 可關、圖示掣有 aria-label；<code>alert/confirm</code> 全改自家對話框。</li>
+                    <li><b>擬真手機電報拍鍵 & 即時解碼</b>：運用手機觸控按壓螢幕產生長短音電報音效、信號燈閃光與觸覺震動，即時長短音計時儀表與進度條，自動分段解碼，並支援全螢幕拍發模式、鍵盤空白鍵拍發、退格刪除與空格。</li>
                     <li><b>🆕 摩斯聽力特訓遊戲</b>：8 關卡 × 3 難度，電報音/信號燈雙裝備，連勝計分、限時作答，答對 8 題解鎖下一關（見「遊戲」頁）。</li>
                     <li><b>🆕 聲音解碼引擎 V5</b>：改用取樣時鐘計時＋雙門檻磁滯＋點劃整批分群，修復只能解出 E、長音（劃）完全聽不到的問題。</li>
                     <li><b>🆕 對方速度設定</b>：接收頁可指定對方 WPM 當解碼種子，快慢電碼都更穩。</li>
@@ -733,12 +763,12 @@
                 </ul>
             </section>
             <footer class="text-center py-4">
-                <p class="text-[10px] font-bold text-slate-600 tracking-widest uppercase">COPYRIGHT © 2026 SCOUT SYSTEM · V5.0</p>
+                <p class="text-[10px] font-bold text-slate-600 tracking-widest uppercase">COPYRIGHT © 2026 SCOUT SYSTEM · v5.1.0</p>
             </footer>
         </div>
 
         <!-- 全頁版權 -->
-        <p class="text-center text-[10px] font-bold text-slate-600 tracking-widest uppercase pt-2">COPYRIGHT © 2026 SCOUT SYSTEM</p>
+        <p class="text-center text-[10px] font-bold text-slate-600 tracking-widest uppercase pt-2">COPYRIGHT © 2026 SCOUT SYSTEM · v5.1.0</p>
     </div>
 
     <!-- ============ BOTTOM TAB BAR ============ -->
@@ -767,12 +797,70 @@
         </div>
     </nav>
 
-    <!-- Custom Modal -->
-    <div id="customModal" class="fixed inset-0 bg-black/80 z-[10000] hidden items-center justify-center p-6 backdrop-blur-sm">
+    <!-- ============ 更新提示 banner（UP2）============ -->
+    <div id="updateBanner" role="region" aria-label="版本更新" hidden
+         class="fixed left-0 right-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-[9000] px-3">
+        <div class="max-w-md mx-auto glass-card border border-cyan-700/60 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl">
+            <i class="fa-solid fa-rotate-right text-cyan-400 text-lg" aria-hidden="true"></i>
+            <div class="flex-1 min-w-0">
+                <p class="text-xs font-bold text-white">有新版本可用</p>
+                <p class="text-[10px] text-slate-400 leading-snug">更新後仍可離線使用，解碼歷史與遊戲進度會保留。</p>
+            </div>
+            <button id="updateNowButton" type="button"
+                    class="bg-cyan-500 hover:bg-cyan-400 text-slate-900 text-xs font-extrabold px-3 py-2 rounded-xl whitespace-nowrap">立即更新</button>
+            <button id="updateLaterButton" type="button" aria-label="稍後再更新"
+                    class="text-slate-400 hover:text-white w-8 h-8 rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- ============ iOS／Android 安裝教學卡（I3）============ -->
+    <div id="installHelpModal" role="dialog" aria-modal="true" aria-labelledby="installHelpTitle" hidden
+         class="fixed inset-0 bg-black/80 z-[10000] flex items-center justify-center p-6 backdrop-blur-sm">
+        <div class="glass-card p-6 rounded-3xl max-w-sm w-full shadow-2xl border border-slate-700 space-y-4">
+            <div class="flex items-start justify-between gap-3">
+                <h2 id="installHelpTitle" class="text-lg font-extrabold text-white">加到主畫面（免上架）</h2>
+                <button id="installHelpClose" type="button" aria-label="關閉安裝說明"
+                        class="w-8 h-8 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+            </div>
+            <p class="text-xs text-[#9fb0d6] leading-relaxed">加主畫面＝全螢幕、離線都開得返，唔使上架、唔使錢。</p>
+            <div class="space-y-3 text-sm text-slate-300">
+                <div>
+                    <p class="font-bold text-blue-400 flex items-center gap-2"><i class="fa-brands fa-apple" aria-hidden="true"></i> iPhone / iPad（必須用 Safari）</p>
+                    <ol class="text-xs text-slate-400 leading-relaxed list-decimal pl-5 mt-1 space-y-1">
+                        <li>用 <b>Safari</b> 開啟本頁</li>
+                        <li>按底部「分享」<i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i></li>
+                        <li>揀「加入主畫面」，再按「加入」</li>
+                    </ol>
+                </div>
+                <div>
+                    <p class="font-bold text-blue-400 flex items-center gap-2"><i class="fa-brands fa-android" aria-hidden="true"></i> Android（Chrome）</p>
+                    <ol class="text-xs text-slate-400 leading-relaxed list-decimal pl-5 mt-1 space-y-1">
+                        <li>右上角 ⋮ 選單</li>
+                        <li>揀「安裝應用程式」或「加到主畫面」</li>
+                        <li>按「安裝」</li>
+                    </ol>
+                </div>
+            </div>
+            <button id="installHelpOk" type="button" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold">知道了</button>
+        </div>
+    </div>
+
+    <!-- Custom Modal（alert 替代品；confirm 模式多一個取消掣） -->
+    <div id="customModal" role="dialog" aria-modal="true" aria-labelledby="modalMsg"
+         class="fixed inset-0 bg-black/80 z-[10000] hidden items-center justify-center p-6 backdrop-blur-sm">
         <div class="glass-card p-8 rounded-3xl max-w-xs w-full shadow-2xl text-center border border-slate-700">
-            <div class="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-info text-blue-500 text-2xl"></i></div>
+            <div class="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><i id="modalIcon" class="fa-solid fa-info text-blue-500 text-2xl" aria-hidden="true"></i></div>
             <p id="modalMsg" class="font-bold text-white mb-6"></p>
-            <button onclick="closeModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold transition-all">收到了</button>
+            <div class="flex gap-2">
+                <button id="modalCancelBtn" type="button" onclick="closeModal(false)"
+                        class="hidden flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-3 rounded-xl font-bold transition-all">取消</button>
+                <button id="modalOkBtn" type="button" onclick="closeModal(true)"
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold transition-all">收到了</button>
+            </div>
         </div>
     </div>
 
@@ -806,8 +894,33 @@
         window.scrollTo({top:0, behavior:'smooth'});
     }
 
-    function customAlert(msg){ document.getElementById('modalMsg').innerText = msg; document.getElementById('customModal').style.display='flex'; }
-    function closeModal(){ document.getElementById('customModal').style.display='none'; }
+    /* 自己嘅對話框（I8：唔准用 alert / confirm / prompt）
+       customAlert(msg)              → 一個「收到了」掣
+       customConfirm(msg, cb)        → 「取消 / 確定」，結果傳去 callback */
+    let modalResolve = null;
+    function customAlert(msg){
+        const m = document.getElementById('customModal');
+        document.getElementById('modalMsg').innerText = msg;
+        document.getElementById('modalCancelBtn').classList.add('hidden');
+        document.getElementById('modalOkBtn').innerText = '收到了';
+        m.classList.remove('hidden'); m.style.display = 'flex';
+        document.getElementById('modalOkBtn').focus();
+    }
+    function customConfirm(msg, onOk){
+        const m = document.getElementById('customModal');
+        document.getElementById('modalMsg').innerText = msg;
+        document.getElementById('modalCancelBtn').classList.remove('hidden');
+        document.getElementById('modalOkBtn').innerText = '確定';
+        modalResolve = onOk || null;
+        m.classList.remove('hidden'); m.style.display = 'flex';
+        document.getElementById('modalCancelBtn').focus();
+    }
+    function closeModal(ok){
+        const m = document.getElementById('customModal');
+        m.classList.add('hidden'); m.style.display = 'none';
+        const cb = modalResolve; modalResolve = null;
+        if (ok && typeof cb === 'function') cb();
+    }
 
     /* ============================================================
        發送 (保留原功能)
@@ -873,7 +986,15 @@
             const caps = track.getCapabilities ? track.getCapabilities() : {};
             if (!caps.torch) { customAlert('您的瀏覽器不支援實體閃光燈控制，請改用螢幕閃光。'); stream.getTracks().forEach(t=>t.stop()); return null; }
             return track;
-        } catch(e){ customAlert('無法取得相機權限（閃光燈需要相機權限）。'); return null; }
+        } catch(e){
+            // 取唔到權限／無相機 = 降級（唔擋發送）：本次只用螢幕閃光，唔再彈窗
+            console.warn('torch 不可用，已改用螢幕閃光', e && e.name);
+            const tEl = document.getElementById('torchOn');
+            if (tEl) tEl.checked = false;
+            const sEl = document.getElementById('torchStatus');
+            if (sEl) sEl.innerText = '未取得相機權限，本次改用螢幕閃光';
+            return null;
+        }
     }
     async function setTorch(state, track){ if (track) try { await track.applyConstraints({ advanced:[{ torch: state }] }); } catch(e){} }
 
@@ -1793,9 +1914,11 @@
         renderStageGrid();
     }
     function resetGameProgress(){
-        if (!confirm('確定要重置所有關卡進度與成績嗎？')) return;
-        saveGameSave({ unlocked:1, best:{} });
-        abortGame();
+        customConfirm('確定要重置所有關卡進度與成績嗎？', () => {
+            saveGameSave({ unlocked:1, best:{} });
+            abortGame();
+            customAlert('已重置所有關卡進度與成績。');
+        });
     }
 
     // 抽題目（困難模式從已解鎖的所有字元混抽）
@@ -1931,11 +2054,11 @@
                 bonus += Math.max(0, Math.round((game.timerEnd - performance.now()) / 100));
             }
             game.score += base + bonus;
-            fb.innerHTML = '<span class="text-green-400"><i class="fa-solid fa-check mr-1"></i>正確！' + game.current + ' = ' + displayMorse(game.current) + '（+' + (base + bonus) + '）</span>';
+            fb.innerHTML = '<span class="text-green-400"><i class="fa-solid fa-check mr-1" aria-hidden="true"></i>正確！' + escHtml(game.current + ' = ' + displayMorse(game.current) + '（+' + (base + bonus) + '）') + '</span>';
             sfx(true);
         } else {
             game.streak = 0;
-            fb.innerHTML = '<span class="text-red-400"><i class="fa-solid fa-xmark mr-1"></i>' + (ch === null ? '超時！' : '答錯了。') + '正解是 ' + game.current + ' = ' + displayMorse(game.current) + '</span>';
+            fb.innerHTML = '<span class="text-red-400"><i class="fa-solid fa-xmark mr-1" aria-hidden="true"></i>' + (ch === null ? '超時！' : '答錯了。') + escHtml(' 正解是 ' + game.current + ' = ' + displayMorse(game.current)) + '</span>';
             sfx(false);
         }
         document.getElementById('gameStreak').innerText = game.streak;
@@ -1988,25 +2111,178 @@
     function replayStage(){ startStage(game.stage); }
 
     /* ============================================================
-       PWA：Service Worker 註冊 + 安裝提示
+       PWA：安裝入口（I1–I8）+ 版本更新（UP1–UP5）
+       一句原則：「安裝要有掣、更新要問過人」
     ============================================================ */
-    if ('serviceWorker' in navigator){
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js').catch(e => console.log('SW 註冊失敗', e));
+    const APP_VERSION = 'v5.1.0';
+
+    const isStandalone = () =>
+        window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    const isIos = () =>
+        /iphone|ipad|ipod/i.test(navigator.userAgent || '') ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);  // iPadOS 13+ 扮 Mac
+
+    const installBtn = document.getElementById('installBtn');
+    const installHelpModal = document.getElementById('installHelpModal');
+    let deferredPrompt = null;
+
+    function showInstallEntry(){
+        if (isStandalone() || !installBtn) return;   // 已經係 App 就唔再顯示
+        installBtn.classList.remove('hidden');
+    }
+    function hideInstallEntry(){ if (installBtn) installBtn.classList.add('hidden'); }
+    function openInstallHelp(){
+        if (!installHelpModal) return;
+        installHelpModal.hidden = false;
+        document.getElementById('installHelpOk')?.focus();
+    }
+    function closeInstallHelp(){
+        if (!installHelpModal) return;
+        installHelpModal.hidden = true;
+        installBtn?.focus();
+    }
+    if (installHelpModal){
+        document.getElementById('installHelpClose')?.addEventListener('click', closeInstallHelp);
+        document.getElementById('installHelpOk')?.addEventListener('click', closeInstallHelp);
+        installHelpModal.addEventListener('click', (e) => { if (e.target === installHelpModal) closeInstallHelp(); });
+    }
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if (installHelpModal && !installHelpModal.hidden) { closeInstallHelp(); return; }
+        const cm = document.getElementById('customModal');
+        if (cm && !cm.classList.contains('hidden')) closeModal(false);
+    });
+
+    // I2：Android／Chrome 攔住系統自彈，等用戶自己撳
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        showInstallEntry();
+    });
+    window.addEventListener('appinstalled', () => {
+        deferredPrompt = null;
+        hideInstallEntry();
+        customAlert('已加入主畫面，之後由主畫面開啟即可離線使用。');
+    });
+    if (installBtn){
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt){
+                deferredPrompt.prompt();
+                try { await deferredPrompt.userChoice; } catch(e){}
+                deferredPrompt = null;
+                hideInstallEntry();
+                return;
+            }
+            openInstallHelp();      // I3：iOS 冇 beforeinstallprompt，一律出教學卡
         });
     }
-    let deferredPrompt = null;
-    const installBtn = document.getElementById('installBtn');
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault(); deferredPrompt = e; installBtn.classList.remove('hidden');
-    });
-    installBtn.addEventListener('click', async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null; installBtn.classList.add('hidden');
-    });
-    window.addEventListener('appinstalled', () => installBtn.classList.add('hidden'));
+    // iOS／桌面等情況：頁面載入後提供入口（唔自動彈窗）
+    if (isStandalone()) hideInstallEntry(); else setTimeout(showInstallEntry, 1200);
+
+    /* ---------- 更新流程（UP1–UP5）---------- */
+    const updateBanner = document.getElementById('updateBanner');
+    const updateNowButton = document.getElementById('updateNowButton');
+    const updateLaterButton = document.getElementById('updateLaterButton');
+    let waitingWorker = null;
+    let dismissedWorker = null;
+    let updateReloading = false;
+
+    function showUpdateBanner(worker){
+        if (!updateBanner || !worker) return;
+        if (worker === dismissedWorker) return;      // UP2：同一個 worker 唔再嘈
+        waitingWorker = worker;
+        updateBanner.hidden = false;
+    }
+    function hideUpdateBanner(){ if (updateBanner) updateBanner.hidden = true; }
+
+    if (updateNowButton){
+        updateNowButton.addEventListener('click', () => {
+            if (!waitingWorker) { location.reload(); return; }
+            updateReloading = true;
+            waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+            // UP3：2.5 秒 fallback，SW 冇反應都要入到新版
+            setTimeout(() => { if (updateReloading) location.reload(); }, 2500);
+        });
+    }
+    if (updateLaterButton){
+        updateLaterButton.addEventListener('click', () => {
+            dismissedWorker = waitingWorker;         // UP2：記住呢個 worker，唔再彈
+            hideUpdateBanner();
+        });
+    }
+
+    if ('serviceWorker' in navigator){
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!updateReloading) return;            // 首次安裝 clients.claim() 唔應該 reload
+            updateReloading = false;
+            location.reload();
+        });
+        window.addEventListener('load', async () => {
+            try {
+                const reg = await navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
+                window.__swReg = reg;
+                const swLabel = document.getElementById('swStatusLabel');
+                if (swLabel) swLabel.innerText = '離線已就緒';
+                if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg.waiting);
+                reg.addEventListener('updatefound', () => {
+                    const nw = reg.installing;
+                    if (!nw) return;
+                    nw.addEventListener('statechange', () => {
+                        if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner(nw);
+                    });
+                });
+                // UP4：回前景／連線／每 30 分鐘檢查；唔做背景無限輪詢
+                const checkUpdate = () => reg.update().catch(() => {});
+                document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
+                window.addEventListener('online', checkUpdate);
+                setInterval(checkUpdate, 30 * 60 * 1000);
+            } catch (e) {
+                console.log('SW 註冊失敗', e);
+                const swLabel = document.getElementById('swStatusLabel');
+                if (swLabel) swLabel.innerText = '離線快取未啟用（可正常使用）';
+            }
+        });
+    }
+
+    /* 「檢查更新」掣：即時 reg.update()，有新版就出 banner */
+    const checkUpdateBtn = document.getElementById('checkUpdateBtn');
+    if (checkUpdateBtn){
+        checkUpdateBtn.addEventListener('click', async () => {
+            if (!('serviceWorker' in navigator) || !window.__swReg){
+                customAlert('此瀏覽器未支援離線快取，App 仍可正常使用。');
+                return;
+            }
+            checkUpdateBtn.disabled = true;
+            try {
+                await window.__swReg.update();
+                if (window.__swReg.waiting && navigator.serviceWorker.controller){
+                    showUpdateBanner(window.__swReg.waiting);
+                } else {
+                    customAlert('已檢查更新：你而家係最新版本（' + APP_VERSION + '）。');
+                }
+            } catch (e) {
+                customAlert('檢查更新失敗，請確認網絡連線後再試。');
+            } finally {
+                checkUpdateBtn.disabled = false;
+            }
+        });
+    }
+
+    /* 說明頁嘅「加入主畫面」掣同 header 掣同一套邏輯 */
+    const installBtn2 = document.getElementById('installBtn2');
+    if (installBtn2){
+        installBtn2.addEventListener('click', () => {
+            if (deferredPrompt){
+                deferredPrompt.prompt();
+                Promise.resolve(deferredPrompt.userChoice).catch(() => {}).finally(() => {
+                    deferredPrompt = null; hideInstallEntry();
+                });
+                return;
+            }
+            if (isStandalone()){ customAlert('已經安裝好了，直接由主畫面開啟就得。'); return; }
+            openInstallHelp();
+        });
+    }
 
     /* ============================================================
        快速短語
@@ -2042,8 +2318,10 @@
         renderHistory();
     }
     function clearHistory(){
-        if (!confirm('確定清除所有解碼歷史？')) return;
-        saveHistory([]); renderHistory();
+        customConfirm('確定清除所有解碼歷史？', () => {
+            saveHistory([]); renderHistory();
+            customAlert('已清除所有解碼歷史。');
+        });
     }
     function deleteHistory(idx){
         const arr = loadHistory(); arr.splice(idx,1); saveHistory(arr); renderHistory();
@@ -2057,27 +2335,33 @@
         if (navigator.share){ navigator.share({ title:'Scout Morse', text:it.text }).catch(()=>{}); }
         else copyHistory(idx);
     }
+    // A11：所有用戶／解碼內容入 HTML 前一律 escape（歷史紀錄係不可信輸入）
+    function escHtml(v){
+        return String(v ?? '').replace(/[&<>"']/g, (c) => ({
+            '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+        })[c]);
+    }
     function renderHistory(){
         const list = document.getElementById('historyList');
         const empty = document.getElementById('historyEmpty');
         if (!list) return;
         const arr = loadHistory();
-        if (!arr.length){ list.innerHTML=''; empty.classList.remove('hidden'); return; }
-        empty.classList.add('hidden');
+        if (!Array.isArray(arr) || !arr.length){ list.innerHTML=''; if (empty) empty.classList.remove('hidden'); return; }
+        if (empty) empty.classList.add('hidden');
         list.innerHTML = arr.map((it,i)=>{
             const d = new Date(it.t);
             const ts = d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
             return `<div class="p-3 rounded-xl bg-[#0b1220] border border-slate-800">
                 <div class="flex items-center justify-between mb-1">
-                    <span class="text-[10px] text-slate-500">${it.mode} · ${ts} · ${it.wpm||'?'}wpm</span>
+                    <span class="text-[10px] text-slate-500">${escHtml(it.mode)} · ${ts} · ${escHtml(it.wpm||'?')}wpm</span>
                     <span class="flex gap-2">
-                        <button onclick="shareHistory(${i})" class="text-[10px] text-slate-400 hover:text-white"><i class="fa-solid fa-share-nodes"></i></button>
-                        <button onclick="copyHistory(${i})" class="text-[10px] text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i></button>
-                        <button onclick="deleteHistory(${i})" class="text-[10px] text-slate-400 hover:text-red-400"><i class="fa-solid fa-xmark"></i></button>
+                        <button type="button" onclick="shareHistory(${i})" aria-label="分享第 ${i+1} 條紀錄" class="text-[10px] text-slate-400 hover:text-white px-1.5 py-1.5"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i></button>
+                        <button type="button" onclick="copyHistory(${i})" aria-label="複製第 ${i+1} 條紀錄" class="text-[10px] text-slate-400 hover:text-white px-1.5 py-1.5"><i class="fa-regular fa-copy" aria-hidden="true"></i></button>
+                        <button type="button" onclick="deleteHistory(${i})" aria-label="刪除第 ${i+1} 條紀錄" class="text-[10px] text-slate-400 hover:text-red-400 px-1.5 py-1.5"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                     </span>
                 </div>
-                <div class="font-bold text-white break-words">${it.text.replace(/</g,'&lt;')}</div>
-                <div class="font-mono text-[11px] text-cyan-400 break-all tracking-widest mt-1">${it.morse}</div>
+                <div class="font-bold text-white break-words">${escHtml(it.text)}</div>
+                <div class="font-mono text-[11px] text-cyan-400 break-all tracking-widest mt-1">${escHtml(it.morse)}</div>
             </div>`;
         }).join('');
     }
@@ -2227,6 +2511,22 @@
             body.theme-light nav{ background:rgba(255,255,255,.9) !important; border-color:rgba(100,116,139,.25)!important;}
         `;
         document.head.appendChild(css);
+    })();
+
+    /* 開實體閃光燈前先問一次（會開相機權限；F9 危險／敏感動作三步） */
+    (function bindTorchToggle(){
+        const tEl = document.getElementById('torchOn');
+        if (!tEl) return;
+        let asked = false;   // 同一 session 只問一次，唔好每次開燈都彈
+        tEl.addEventListener('change', () => {
+            if (!tEl.checked || asked) return;
+            asked = true;
+            customConfirm('實體閃光燈需要相機權限（只作開燈，唔會錄影、唔會上傳）。確定開啟？', () => {
+                tEl.checked = true;
+                tEl.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+            tEl.checked = false;
+        });
     })();
 
     /* ============================================================

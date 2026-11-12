@@ -16,6 +16,11 @@
  *   9) 依 .vercelignore 模擬實際上傳 Vercel 的檔案清單與大小，
  *      並確認 payload「恰好」等於必要網頁產物（無孤兒檔案）
  *  10) 核心功能標記（Goertzel／閃光燈／蜂鳴／震動／Beacon／PWA…）全數在位
+ *  11) 圖標標準 G11：9 個 PNG／ICO 齊、尺寸正確、maskable 安全區、體積預算
+ *  12) 版號同步 V1：index.html（meta／title／APP_VERSION）＝ sw.js ＝ manifest
+ *  13) PWA 安裝／更新 I1–I8／UP1–UP5：安裝有掣、更新要問過人、唔准自動 skipWaiting
+ *  14) 防呆 F/I8：無 alert()／confirm()／prompt()、對話框有 role="dialog"
+ *  15) 安全 A11：解碼內容（不可信輸入）入 innerHTML 前必須 escape
  *
  * 執行：node scripts/verify.mjs   （任一檢查失敗即以 exit 1 結束）
  */
@@ -41,9 +46,15 @@ const REQUIRED = [
   'index.html',
   'manifest.webmanifest',
   'sw.js',
-  'icon-192.png',
-  'icon-512.png',
-  'icon-512-maskable.png',
+  'icons/favicon.ico',
+  'icons/favicon-16.png',
+  'icons/favicon-32.png',
+  'icons/apple-touch-icon.png',
+  'icons/icon-192.png',
+  'icons/icon-512.png',
+  'icons/icon-maskable-192.png',
+  'icons/icon-maskable-512.png',
+  'icons/og-image.png',
   'assets/css/tailwind.min.css',
   'assets/fontawesome/css/all.min.css',
   ...['fa-brands-400', 'fa-regular-400', 'fa-solid-900', 'fa-v4compatibility'].flatMap(
@@ -178,7 +189,9 @@ const isIgnored = (relPath) => patterns.some((p) => {
   const re = globToRe(p);
   if (re.test(relPath)) return true;
   if (p.includes('/')) return false; // 含斜線的模式只比對完整路徑
-  return relPath.split('/').some((seg) => re.test(seg)); // 無斜線模式可比對各層（gitignore 語意）
+  // 無斜線模式可比對各層；目錄名本身亦代表其子樹（gitignore 語意）
+  const segs = relPath.split('/');
+  return segs.some((seg) => re.test(seg));
 });
 const payload = allFiles.filter((p) => !isIgnored(toRel(p)));
 let total = 0;
@@ -222,6 +235,154 @@ const FEATURES = [
 for (const [name, rx] of FEATURES) {
   html.match(rx) ? ok(name) : bad(`核心功能標記消失：${name}`);
 }
+
+/* ---------- 11. 圖標標準（G11 / docs-33）---------- */
+section('11. 圖標標準 G11（9 個 PNG／ICO、尺寸、maskable、體積）');
+// 純 Node 讀 PNG IHDR，唔依賴 ImageMagick
+function pngSize(abs) {
+  const b = readFileSync(abs);
+  if (b.length < 24 || b.toString('ascii', 1, 4) !== 'PNG') return null;
+  return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+}
+const ICON_SPEC = [
+  ['icons/favicon-16.png', 16],
+  ['icons/favicon-32.png', 32],
+  ['icons/apple-touch-icon.png', 180],
+  ['icons/icon-192.png', 192],
+  ['icons/icon-512.png', 512],
+  ['icons/icon-maskable-192.png', 192],
+  ['icons/icon-maskable-512.png', 512],
+  ['icons/og-image.png', 1200, 630],
+];
+let iconBytes = 0;
+for (const [f, w, h] of ICON_SPEC) {
+  const abs = join(ROOT, f);
+  if (!existsSync(abs)) { bad(`缺少圖標：${f}`); continue; }
+  const sz = pngSize(abs);
+  const wantH = h || w;
+  if (!sz) bad(`${f} 唔係合法 PNG`);
+  else if (sz.w !== w || sz.h !== wantH) bad(`${f} 尺寸錯誤：${sz.w}x${sz.h}（應為 ${w}x${wantH}）`);
+  else ok(`${f} ${sz.w}x${sz.h}`);
+  iconBytes += statSync(abs).size;
+}
+const icoPath = join(ROOT, 'icons/favicon.ico');
+if (!existsSync(icoPath)) bad('缺少 icons/favicon.ico');
+else {
+  const b = readFileSync(icoPath);
+  const isIco = b.readUInt16LE(0) === 0 && b.readUInt16LE(2) === 1;
+  const count = isIco ? b.readUInt16LE(4) : 0;
+  if (!isIco) bad('icons/favicon.ico 檔案頭唔係 ICO');
+  else if (count < 3) bad(`favicon.ico 只有 ${count} 個尺寸（應 16／32／48 三個）`);
+  else ok(`favicon.ico 含 ${count} 個尺寸`);
+  iconBytes += b.length;
+}
+const iconKB = iconBytes / 1024;
+iconKB <= 260
+  ? ok(`9 個圖標合計 ${iconKB.toFixed(0)} KB（預算 ≤ 260 KB）`)
+  : bad(`圖標合計 ${iconKB.toFixed(0)} KB，超出 260 KB 預算`);
+
+// HTML／manifest 掛法（5 link + 4 meta）
+const HEAD_LINKS = [
+  [/rel="icon"[^>]*favicon\.ico|favicon\.ico"[^>]*rel="icon"/, 'favicon.ico'],
+  [/favicon-16\.png/, 'favicon-16'],
+  [/favicon-32\.png/, 'favicon-32'],
+  [/rel="apple-touch-icon"[^>]*apple-touch-icon\.png|apple-touch-icon\.png"[^>]*rel="apple-touch-icon"/, 'apple-touch-icon 180'],
+  [/rel="manifest"/, 'manifest link'],
+];
+for (const [rx, label] of HEAD_LINKS) (rx.test(html) ? ok(`<head> 有 ${label}`) : bad(`<head> 缺少 ${label}`));
+const HEAD_METAS = [
+  [/<meta name="theme-color"/, 'theme-color'],
+  [/<meta property="og:image" content="https:\/\/[^"]+"/, 'og:image（絕對網址）'],
+  [/<meta property="og:image:width"/, 'og:image:width'],
+  [/<meta property="og:image:height"/, 'og:image:height'],
+  [/<meta name="copyright"/, 'copyright'],
+  [/<meta name="app-version"/, 'app-version'],
+];
+for (const [rx, label] of HEAD_METAS) (rx.test(html) ? ok(`<head> 有 ${label}`) : bad(`<head> 缺少 ${label}`));
+
+/* ---------- 12. 版號同步（V1）---------- */
+section('12. 版號同步（index.html ＝ sw.js ＝ manifest）');
+const verOf = (re, text, label) => {
+  const m = text.match(re);
+  if (!m) { bad(`讀唔到${label}版號`); return null; }
+  return m[1];
+};
+const vHtml = verOf(/<meta name="app-version" content="(v[\d.]+)"/, html, 'index.html meta ');
+const vConst = verOf(/const APP_VERSION = '(v[\d.]+)'/, html, 'index.html APP_VERSION ');
+const vSw = verOf(/const APP_VERSION = '(v[\d.]+)'/, sw, 'sw.js ');
+// 快取名一定要由 APP_VERSION 推導（單一真理：改版只改一個常數）
+const cacheDerived = /const CACHE = 'scout-morse-' \+ APP_VERSION/.test(sw);
+const vCache = cacheDerived ? vSw : null;
+const vManifest = verOf(/"name":\s*"[^"]*?(v[\d.]+)"/, readFileSync(join(ROOT, 'manifest.webmanifest'), 'utf8'), 'manifest ');
+const pkgPath = join(ROOT, 'package.json');
+const vPkg = existsSync(pkgPath) ? verOf(/"version":\s*"(\d+\.\d+\.\d+)"/, readFileSync(pkgPath, 'utf8'), 'package.json ') : null;
+const vers = { 'meta app-version': vHtml, 'APP_VERSION(index)': vConst, 'APP_VERSION(sw)': vSw, manifest: vManifest };
+if (vPkg && vHtml && vPkg !== vHtml.replace(/^v/, '')) bad(`package.json 版號 ${vPkg} 同介面 ${vHtml} 唔一致`);
+else if (vPkg) ok(`package.json = ${vPkg}`);
+cacheDerived ? ok('快取名由 APP_VERSION 推導（改版只改一個常數）') : bad('SW 快取名冇綁 APP_VERSION');
+for (const [k, v] of Object.entries(vers)) ok(`${k} = ${v}`);
+const uniq = new Set(Object.values(vers).filter(Boolean));
+uniq.size === 1 ? ok(`各處版號一致：${[...uniq][0]}`) : bad(`版號唔一致：${[...uniq].join(' / ')}（V1/V3）`);
+html.includes(`${vHtml}`) && /<title>[^<]*v[\d.]+/.test(html) ? ok('<title> 有版號') : bad('<title> 缺版號（V2 ②）');
+/(COPYRIGHT © 2026 SCOUT SYSTEM · v[\d.]+)/.test(html) ? ok('頁尾有「© SCOUT SYSTEM · 版號」') : bad('頁尾缺版號（V2 ⑤）');
+
+/* ---------- 13. PWA 安裝／更新（I1–I8 / UP1–UP5）---------- */
+section('13. PWA 安裝入口＋更新流程');
+const I = (rx, label) => (rx.test(html) ? ok(label) : bad(label));
+I(/beforeinstallprompt/, 'I2 攔 beforeinstallprompt（唔畀瀏覽器自彈）');
+I(/id="installBtn"/, 'I1 有「加入主畫面」入口掣');
+I(/display-mode:\s*standalone/, 'I4 偵測 standalone');
+I(/maxTouchPoints > 1/, 'I4 iPadOS 判斷（MacIntel + maxTouchPoints）');
+I(/id="installHelpModal"[^>]*role="dialog"[^>]*aria-modal="true"/, 'I3 iOS 三步教學卡（role=dialog / aria-modal）');
+I(/加入主畫面/, 'I3 教學卡文案（加入主畫面）');
+I(/id="updateBanner"[^>]*role="region"/, 'UP2 更新 banner（role=region）');
+I(/SKIP_WAITING/, 'UP3 送 SKIP_WAITING 訊息');
+I(/\}, 2500\);/, 'UP3 2.5 秒 reload fallback');
+I(/visibilitychange[\s\S]{0,120}checkUpdate/, 'UP4 回前景檢查更新');
+I(/setInterval\(checkUpdate,\s*30 \* 60 \* 1000\)/, 'UP4 每 30 分鐘檢查');
+I(/dismissedWorker/, 'UP2「稍後」記住同一個 worker');
+I(/updateViaCache:\s*'none'/, 'UP4 updateViaCache: none');
+// SW：install 內唔准無條件 skipWaiting
+const swInstall = (sw.match(/addEventListener\('install'[\s\S]*?\n\}\);/) || [''])[0];
+if (!swInstall) bad('sw.js 搵唔到 install 事件');
+else if (/self\.registration\.active\s*\?/.test(swInstall) && /skipWaiting\(\)/.test(swInstall)) ok('UP1 install 只在首次安裝 skipWaiting');
+else if (/skipWaiting\(\)/.test(swInstall)) bad('UP1 install 內無條件 skipWaiting()（會玩到一半偷換版）');
+else ok('UP1 install 冇 skipWaiting（首次安裝會慢一步接手，可接受）');
+/sw\.addEventListener\('message'/.test(sw) || /'message',\s*\(?event/.test(sw)
+  ? ok('UP1 SW 有 message handler 收 SKIP_WAITING') : bad('UP1 SW 缺 message handler');
+
+/* ---------- 14. 防呆（I8）---------- */
+section('14. 防呆：無原生 alert／confirm／prompt');
+const nativeCalls = [...html.matchAll(/(?<![.\w$])(alert|confirm|prompt)\s*\(/g)]
+  .filter((m) => !/deferredPrompt|installPrompt|\.prompt\s*\(/.test(m[0]));
+// 排除變數呼叫 xxx.prompt( 同自訂 customAlert/customConfirm
+const realNative = [...html.matchAll(/(?:^|[^.\w$])(alert|confirm)\s*\(/gm)].map((m) => m[1]);
+realNative.length === 0 ? ok('無 alert()／confirm()（I8）') : bad(`仍有原生對話框呼叫：${[...new Set(realNative)].join(', ')}`);
+void nativeCalls;
+/role="dialog"[^>]*aria-modal="true"[^>]*aria-labelledby="modalMsg"/.test(html)
+  ? ok('自訂對話框有 role/aria-modal/aria-labelledby') : bad('自訂對話框缺 aria 標記');
+/aria-label=/.test(html) ? ok('有 aria-label（圖示掣）') : bad('圖示掣缺 aria-label');
+
+/* ---------- 15. 安全（A11）---------- */
+section('15. 安全：解碼內容 escape 後才入 innerHTML');
+/function escHtml\(/.test(html) ? ok('有 escHtml() escape 函數') : bad('缺 escHtml() escape 函數');
+/escHtml\(it\.text\)/.test(html) ? ok('解碼歷史文字有 escape') : bad('解碼歷史文字未 escape（XSS 風險）');
+/escHtml\(it\.morse\)/.test(html) ? ok('解碼歷史摩斯碼有 escape') : bad('解碼歷史摩斯碼未 escape');
+// 只准白名單嘅 innerHTML 用法（固定模板或已 escape）
+// 來源分類：只有「自由文字／外部輸入」先算風險；固定字串同常數（例如 icon class 三元式）唔算
+const UNTRUSTED = /(it\.(text|morse|mode|wpm)|decodedOut|customText|\.value\b|location\.|searchParams|\.innerText)/;
+const rawInner = [];
+for (const m of html.matchAll(/\.innerHTML\s*=\s*([\s\S]*?);\s*\n/g)) {
+  for (const mm of m[1].matchAll(/\$\{([^}]*)\}/g)) {
+    const expr = mm[1].trim();
+    if (/^escHtml\(/.test(expr)) continue;          // 已 escape
+    if (!UNTRUSTED.test(expr)) continue;             // 固定字串／常數
+    rawInner.push(expr);
+  }
+}
+rawInner.length === 0
+  ? ok('所有「不可信來源」插入 innerHTML 前都已 escape')
+  : rawInner.slice(0, 6).forEach((e) => bad(`innerHTML 插入了未 escape 嘅不可信內容：${e.slice(0, 80)}`));
 
 /* ---------- 總結 ---------- */
 section('總結');

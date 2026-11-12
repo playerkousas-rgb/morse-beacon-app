@@ -1,0 +1,35 @@
+# 授權條款（License）— Scout Morse 發訊器 v5.1.0
+
+COPYRIGHT © 2026 SCOUT SYSTEM · All rights reserved except as granted below.
+
+## 1. 你可以
+
+- 免費使用本 App（個人、童軍旅團、學校、非牟利機構、商業機構皆可）。
+- 自由改作、翻譯、整合落自己嘅旅團系統。
+- 自由散布原版或改作版（網頁連結、檔案、教學文章皆可）。
+
+## 2. 你必須
+
+- 保留以下版權標示，唔准移除或遮蔽：
+  - 原始碼檔頭註解內嘅 `COPYRIGHT © 2026 SCOUT SYSTEM`
+  - 頁面 `<meta name="copyright">` 同頁尾可見嘅 `COPYRIGHT © 2026 SCOUT SYSTEM` 字樣
+  - 本 `LICENSE` 檔案（或改作版內同等效力嘅聲明）
+- 改作版要寫明「基於 Scout Morse v5.1.0 修改」，並保留原版連結。
+
+## 3. 你唔可以
+
+- 移除版權標示後當成自己原創作品發佈。
+- 以本 App 名義收集使用者資料、冒充官方服務，或加入惡意代碼後繼續使用相同名稱／圖標。
+
+## 4. 免責聲明
+
+本 App 按「現狀」提供，唔附帶任何明示或隱含保證。摩斯通訊僅屬練習與輔助用途，
+**唔可以當作緊急求救或維生通訊嘅唯一手段**。使用實體閃光燈、相機、咪高峰時，
+請自行注意裝置過熱、用電同環境安全。作者唔對任何使用後果負責。
+
+## 5. 第三方元件
+
+- Tailwind CSS（MIT License）— `assets/css/tailwind.min.css`
+- Font Awesome Free 6（Icons: CC BY 4.0；Fonts: SIL OFL 1.1；Code: MIT）— `assets/fontawesome/`
+
+第三方元件之授權以各自原授權條款為準，並優先於本文件。

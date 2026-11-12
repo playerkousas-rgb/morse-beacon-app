@@ -1,5 +1,5 @@
 {
-  "name": "Scout Morse 發訊器",
+  "name": "Scout Morse 發訊器 v5.1.0",
   "short_name": "Scout Morse",
   "description": "摩斯密碼發送與接收解碼（聲音 / 光源 / 手動拍打）＋聽力特訓遊戲",
   "start_url": "./",
@@ -9,9 +9,11 @@
   "background_color": "#0b1220",
   "theme_color": "#0b1220",
   "lang": "zh-TW",
+  "categories": ["education", "utilities"],
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

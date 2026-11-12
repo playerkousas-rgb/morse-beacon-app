@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <!-- 版本：v5.1.0 · COPYRIGHT © 2026 SCOUT SYSTEM -->
+    <!-- 版本：v5.2.0 · COPYRIGHT © 2026 SCOUT SYSTEM -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0b1220">
-    <meta name="app-version" content="v5.1.0">
+    <meta name="app-version" content="v5.2.0">
     <meta name="copyright" content="© 2026 SCOUT SYSTEM">
     <meta name="description" content="摩斯密碼發送與接收解碼 PWA：螢幕閃光／實體閃光燈／蜂鳴／震動發送、聲音（Goertzel）與光源解碼、手動電報拍鍵、聽力特訓遊戲。可加到主畫面離線使用。">
-    <title>Scout Morse 發訊器 v5.1.0 — © SCOUT SYSTEM</title>
+    <title>Scout Morse 發訊器 v5.2.0 — © SCOUT SYSTEM</title>
 
     <!-- PWA -->
     <link rel="manifest" href="manifest.webmanifest">
@@ -22,7 +22,7 @@
 
     <!-- 分享預覽（og:image 必須用絕對網址） -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Scout Morse 發訊器 v5.1.0">
+    <meta property="og:title" content="Scout Morse 發訊器 v5.2.0">
     <meta property="og:description" content="摩斯密碼發送與接收解碼（聲音／光源／手動拍鍵）＋聽力特訓。可加到主畫面離線使用。">
     <meta property="og:image" content="https://morse-beacon-app.vercel.app/icons/og-image.png">
     <meta property="og:image:width" content="1200">
@@ -174,6 +174,16 @@
         .stage-stars { color:#facc15; letter-spacing:2px; }
         body.theme-light .ans-btn { background:#e2e8f0; color:#0b1220; border-color:#cbd5e1; }
         body.theme-light .stage-card { background:#f1f5f9; border-color:#cbd5e1; color:#0b1220; }
+
+        /* ===== hidden 屬性要贏過 utility class（P1 修正）=====
+           原因：編譯後嘅 Tailwind 把 [hidden]{display:none} 排在 .flex／.grid 之前，
+           而兩者特異性相同（0,1,0）→ 後出現嘅 .flex 勝出。
+           結果：<div id="installHelpModal" class="... flex ..." hidden> 會永遠顯示
+           （iOS／桌面一開頁就見到「加到主畫面」教學卡蓋住民頁），
+           updateBanner 同 customAlert／esc 亦一樣關唔走。
+           HTML 標準：hidden 屬性嘅意義就係「唔顯示」，所以呢條用 !important 補返；
+           要顯示就由 JS 移除 hidden（本檔所有開關都係改 .hidden 屬性，兩條路徑一致）。 */
+        [hidden] { display: none !important; }
     </style>
 </head>
 <body class="p-4 pb-28">
@@ -264,7 +274,7 @@
         <div id="page-send" class="page active space-y-4">
             <section class="glass-card p-5 rounded-2xl shadow-sm space-y-4">
                 <div>
-                    <label class="block text-sm font-bold mb-2 text-slate-300">訊息內容</label>
+                    <label class="block text-sm font-bold mb-2 text-slate-300" for="messageInput">訊息內容</label>
                     <textarea id="messageInput" class="w-full p-4 rounded-xl border border-slate-700 bg-[#0f172a] text-white focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px] font-bold text-lg" placeholder="例如：SOS">SOS HELP</textarea>
                     <div class="flex flex-wrap gap-2 mt-2" id="phraseBar">
                         <button onclick="quickPhrase('SOS')" class="speed-chip px-3 py-1.5 rounded-full font-bold text-xs">SOS</button>
@@ -277,7 +287,7 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-bold mb-2 text-slate-300">摩斯碼預覽</label>
+                    <label class="block text-sm font-bold mb-2 text-slate-300" for="morsePreview">摩斯碼預覽</label>
                     <div id="morsePreview" class="p-3 rounded-xl bg-[#0b1220] border border-slate-800 break-all font-mono text-blue-400 font-bold min-h-[50px] text-center tracking-widest">
                         ... --- ... / .... . .-.. .--.
                     </div>
@@ -287,10 +297,10 @@
             <section class="glass-card p-5 rounded-2xl shadow-sm space-y-5">
                 <div>
                     <div class="flex justify-between items-center mb-3">
-                        <label class="text-sm font-bold text-slate-300">發報速度 (WPM)</label>
+                        <label id="wpmGroupLabel" class="text-sm font-bold text-slate-300">發報速度 (WPM)</label>
                         <span id="wpmDisplay" class="text-xs font-mono text-blue-400 font-bold">15 WPM</span>
                     </div>
-                    <div class="flex flex-wrap gap-2" id="speedSelector">
+                    <div class="flex flex-wrap gap-2" id="speedSelector" role="group" aria-labelledby="wpmGroupLabel">
                         <button onclick="setWPM(8)" class="speed-chip px-4 py-2 rounded-full font-bold text-xs">8</button>
                         <button onclick="setWPM(12)" class="speed-chip px-4 py-2 rounded-full font-bold text-xs">12</button>
                         <button onclick="setWPM(15)" class="speed-chip px-4 py-2 rounded-full font-bold text-xs active">15</button>
@@ -300,10 +310,10 @@
                 </div>
                 <div class="mt-4">
                     <div class="flex justify-between items-center mb-2">
-                        <label class="text-sm font-bold text-slate-300">頻道頻率 (Hz)</label>
+                        <label id="sendFreqLabel" class="text-sm font-bold text-slate-300">頻道頻率 (Hz)</label>
                         <span class="freqDisp text-xs font-mono text-blue-400 font-bold">750 Hz</span>
                     </div>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-wrap gap-2" role="group" aria-labelledby="sendFreqLabel">
                         <button onclick="setFreq(750)" data-freq="750" class="freq-chip speed-chip px-4 py-2 rounded-full font-bold text-xs active">750</button>
                         <button onclick="setFreq(1000)" data-freq="1000" class="freq-chip speed-chip px-4 py-2 rounded-full font-bold text-xs">1000</button>
                         <button onclick="setFreq(1500)" data-freq="1500" class="freq-chip speed-chip px-4 py-2 rounded-full font-bold text-xs">1500</button>
@@ -400,7 +410,7 @@
             <!-- Live signal monitor -->
             <section class="glass-card p-5 rounded-2xl shadow-sm space-y-4">
                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-bold text-slate-300">即時訊號偵測</label>
+                    <label class="text-sm font-bold text-slate-300" for="levelBar">即時訊號偵測</label>
                     <span id="signalState" class="text-xs font-mono font-bold px-2 py-1 rounded-full pill text-slate-400">待機</span>
                 </div>
 
@@ -422,8 +432,8 @@
 
                 <!-- frequency channel -->
                 <div class="flex items-center justify-between">
-                    <label class="text-xs font-bold text-slate-400">頻道頻率</label>
-                    <div class="flex gap-1">
+                    <label id="recvFreqLabel" class="text-xs font-bold text-slate-400">頻道頻率</label>
+                    <div class="flex gap-1" role="group" aria-labelledby="recvFreqLabel">
                         <button onclick="setFreq(750)" data-freq="750" class="freq-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs active">750</button>
                         <button onclick="setFreq(1000)" data-freq="1000" class="freq-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">1000</button>
                         <button onclick="setFreq(1500)" data-freq="1500" class="freq-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">1500</button>
@@ -432,8 +442,8 @@
 
                 <!-- 對方速度（解碼種子） -->
                 <div class="flex items-center justify-between">
-                    <label class="text-xs font-bold text-slate-400">對方速度</label>
-                    <div class="flex gap-1 flex-wrap justify-end">
+                    <label id="recvWpmLabel" class="text-xs font-bold text-slate-400">對方速度</label>
+                    <div class="flex gap-1 flex-wrap justify-end" role="group" aria-labelledby="recvWpmLabel">
                         <button onclick="setRecvWPM(0)" data-rwpm="0" class="rwpm-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs active">自動</button>
                         <button onclick="setRecvWPM(8)" data-rwpm="8" class="rwpm-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">8</button>
                         <button onclick="setRecvWPM(12)" data-rwpm="12" class="rwpm-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">12</button>
@@ -446,7 +456,7 @@
                 <!-- sensitivity -->
                 <div id="sensBox">
                     <div class="flex justify-between items-center mb-1">
-                        <label class="text-xs font-bold text-slate-400">靈敏度</label>
+                        <label class="text-xs font-bold text-slate-400" for="sensSlider">靈敏度</label>
                         <span id="sensDisp" class="text-[10px] font-mono text-blue-400">自動</span>
                     </div>
                     <input id="sensSlider" type="range" min="0" max="100" value="50" class="w-full accent-blue-500">
@@ -457,10 +467,10 @@
             <!-- 手動電報拍發區 -->
             <section id="manualKeySection" class="glass-card p-5 rounded-2xl shadow-sm space-y-4 hidden">
                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-bold text-slate-300 flex items-center gap-1.5">
-                        <i class="fa-solid fa-hand-pointer text-cyan-400"></i>
+                    <p class="text-sm font-bold text-slate-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-hand-pointer text-cyan-400" aria-hidden="true"></i>
                         <span>手動電報拍鍵</span>
-                    </label>
+                    </p>
                     <button onclick="openFullScreenKeyer()" class="px-3 py-1 rounded-xl text-xs font-bold bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-600/50 flex items-center gap-1.5 transition-all">
                         <i class="fa-solid fa-expand"></i> 全螢幕拍發
                     </button>
@@ -532,12 +542,12 @@
             <!-- Decoded output -->
             <section class="glass-card p-5 rounded-2xl shadow-sm space-y-3">
                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-bold text-slate-300">即時摩斯碼</label>
+                    <label class="text-sm font-bold text-slate-300" for="liveMorse">即時摩斯碼</label>
                     <button onclick="clearDecode()" class="text-[10px] text-slate-400 hover:text-white"><i class="fa-solid fa-trash mr-1"></i>清除</button>
                 </div>
-                <div id="liveMorse" class="p-3 rounded-xl bg-[#0b1220] border border-slate-800 break-all font-mono text-cyan-400 font-bold min-h-[44px] tracking-widest text-center">—</div>
-                <label class="block text-sm font-bold text-slate-300 pt-1">解碼文字</label>
-                <div id="decodedText" class="p-4 rounded-xl bg-[#0f172a] border border-slate-700 break-words font-bold text-lg min-h-[60px] text-white">等待訊號…</div>
+                <div id="liveMorse" aria-live="polite" aria-atomic="true" class="p-3 rounded-xl bg-[#0b1220] border border-slate-800 break-all font-mono text-cyan-400 font-bold min-h-[44px] tracking-widest text-center">—</div>
+                <label class="block text-sm font-bold text-slate-300 pt-1" for="decodedText">解碼文字</label>
+                <div id="decodedText" role="status" aria-live="polite" aria-atomic="true" class="p-4 rounded-xl bg-[#0f172a] border border-slate-700 break-words font-bold text-lg min-h-[60px] text-white">等待訊號…</div>
                 <div class="flex gap-2">
                     <button onclick="copyDecoded()" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg"><i class="fa-regular fa-copy mr-1"></i>複製</button>
                     <button onclick="shareDecoded()" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg"><i class="fa-solid fa-share-nodes mr-1"></i>分享</button>
@@ -555,13 +565,13 @@
             <!-- 錄音檔離線解碼 -->
             <section id="fileDecodeSection" class="glass-card p-5 rounded-2xl shadow-sm space-y-3">
                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-bold text-slate-300"><i class="fa-solid fa-file-audio text-cyan-400 mr-1"></i>音檔離線解碼</label>
+                    <label class="text-sm font-bold text-slate-300" for="audioFile"><i class="fa-solid fa-file-audio text-cyan-400 mr-1" aria-hidden="true"></i>音檔離線解碼</label>
                     <span class="text-[10px] text-slate-500">所選頻率 · 自動估速</span>
                 </div>
                 <p class="text-[11px] text-slate-500 leading-relaxed">上傳一段含所選頻率蜂鳴的錄音（wav/mp3/m4a），離線解出內容。</p>
-                <label class="block">
+                <div class="block">
                     <input id="audioFile" type="file" accept="audio/*" class="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white file:font-bold file:cursor-pointer">
-                </label>
+                </div>
                 <div id="fileDecodeBox" class="hidden">
                     <div class="text-[10px] text-slate-500 mb-1">檔案解碼結果</div>
                     <div id="fileMorse" class="p-2 rounded-lg bg-[#0b1220] border border-slate-800 font-mono text-cyan-400 text-xs break-all tracking-widest min-h-[32px]">—</div>
@@ -572,7 +582,7 @@
             <!-- 解碼歷史 -->
             <section class="glass-card p-5 rounded-2xl shadow-sm space-y-3">
                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-bold text-slate-300"><i class="fa-solid fa-clock-rotate-left text-purple-400 mr-1"></i>解碼歷史</label>
+                    <p class="text-sm font-bold text-slate-300"><i class="fa-solid fa-clock-rotate-left text-purple-400 mr-1" aria-hidden="true"></i>解碼歷史</p>
                     <button onclick="clearHistory()" class="text-[10px] text-slate-400 hover:text-red-400"><i class="fa-solid fa-trash mr-1"></i>全部清除</button>
                 </div>
                 <div id="historyList" class="space-y-2 max-h-72 overflow-y-auto"></div>
@@ -589,15 +599,15 @@
                 </div>
                 <p class="text-[11px] text-slate-500 leading-relaxed">聽一段電報音（或看信號燈），選出正確字元。共 8 大關卡 × 3 種難度，每關 10 題，答對 8 題即可解鎖下一關！</p>
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1">裝備</label>
-                    <div class="grid grid-cols-2 gap-2">
+                    <p class="block text-xs font-bold text-slate-400 mb-1" id="equipLabel">裝備</p>
+                    <div class="grid grid-cols-2 gap-2" role="group" aria-labelledby="equipLabel">
                         <button id="equipSound" onclick="setGameEquip('sound')" class="py-3 rounded-xl font-bold text-sm bg-blue-600 text-white flex items-center justify-center gap-2"><i class="fa-solid fa-tower-broadcast"></i> 電報音</button>
                         <button id="equipLamp" onclick="setGameEquip('lamp')" class="py-3 rounded-xl font-bold text-sm bg-[#1e293b] text-slate-300 flex items-center justify-center gap-2"><i class="fa-solid fa-lightbulb"></i> 信號燈</button>
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1">難度</label>
-                    <div class="grid grid-cols-3 gap-2">
+                    <p class="block text-xs font-bold text-slate-400 mb-1" id="diffLabel">難度</p>
+                    <div class="grid grid-cols-3 gap-2" role="group" aria-labelledby="diffLabel">
                         <button id="diffEasy" onclick="setGameDiff('easy')" class="py-2 rounded-xl font-bold text-xs bg-blue-600 text-white">簡單<span class="block text-[9px] font-normal opacity-75">8WPM・顯示點劃</span></button>
                         <button id="diffMed" onclick="setGameDiff('med')" class="py-2 rounded-xl font-bold text-xs bg-[#1e293b] text-slate-300">中等<span class="block text-[9px] font-normal opacity-75">12WPM・純聽音</span></button>
                         <button id="diffHard" onclick="setGameDiff('hard')" class="py-2 rounded-xl font-bold text-xs bg-[#1e293b] text-slate-300">困難<span class="block text-[9px] font-normal opacity-75">18WPM・限時作答</span></button>
@@ -608,7 +618,7 @@
             <!-- 關卡選擇 -->
             <section id="stageSelectBox" class="glass-card p-5 rounded-2xl shadow-sm space-y-3">
                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-bold text-slate-300"><i class="fa-solid fa-map text-green-400 mr-1"></i>選擇關卡</label>
+                    <p class="text-sm font-bold text-slate-300"><i class="fa-solid fa-map text-green-400 mr-1" aria-hidden="true"></i>選擇關卡</p>
                     <button onclick="resetGameProgress()" class="text-[10px] text-slate-500 hover:text-red-400"><i class="fa-solid fa-rotate-left mr-1"></i>重置進度</button>
                 </div>
                 <div id="stageGrid" class="grid grid-cols-2 gap-2"></div>
@@ -716,7 +726,7 @@
                         <i class="fa-solid fa-rotate-right mr-1" aria-hidden="true"></i>檢查更新
                     </button>
                 </div>
-                <p class="text-[10px] text-slate-500 text-center">目前版本 <span id="appVersionLabel">v5.1.0</span> · 離線可用 · <span id="swStatusLabel">Service Worker：檢查中…</span></p>
+                <p class="text-[10px] text-slate-500 text-center">目前版本 <span id="appVersionLabel">v5.2.0</span> · 離線可用 · <span id="swStatusLabel">Service Worker：檢查中…</span></p>
             </section>
             <section class="glass-card p-6 rounded-2xl shadow-sm space-y-3">
                 <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-bolt text-yellow-400"></i> 實體閃光燈相容性</h2>
@@ -732,9 +742,14 @@
                 <p class="text-[10px] text-slate-500 leading-relaxed pt-1">※ 需符合：HTTPS、後鏡頭具 LED、且使用者允許相機權限。不支援時請改用「螢幕閃光」。</p>
             </section>
             <section class="glass-card p-6 rounded-2xl shadow-sm space-y-3">
-                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sparkles text-yellow-400" aria-hidden="true"></i> v5.1.0 更新內容</h2>
+                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sparkles text-yellow-400" aria-hidden="true"></i> v5.2.0 更新內容</h2>
                 <ul class="text-xs text-slate-400 space-y-1.5 list-disc pl-4 leading-relaxed">
-                    <li><b>🆕 安裝入口</b>：右上角「加入主畫面」掣；iPhone 會出 Safari 三步教學卡，Android 用系統對話框；已安裝後自動收起。</li>
+                    <li><b>🔧 修正：教學卡唔會再自己彈出</b>（之前一開頁會被「加到主畫面」卡片蓋住、關唔走；現已修好）。</li>
+                    <li><b>🆕 發送前 3 秒倒數</b>：倒數期唔會開燈／響聲，撳「停止」即時取消，避免誤按廣播。</li>
+                    <li><b>🆕 底部 Tab 會記住位置</b>：網址加 <code>#decode</code> 等，reload 或分享都停在同一頁；讀屏／鍵盤可正常操作。</li>
+                    <li><b>♿ 無障礙</b>：表單標籤全部對應、解碼結果加讀屏播報（aria-live）、分頁有完整語義。</li>
+                    <li><b>📉 體積減半</b>：移除 815 KB 無人用嘅舊字型格式，離線下載更快。</li>
+                    <li><b>安裝入口</b>：右上角「加入主畫面」掣；iPhone 會出 Safari 三步教學卡，Android 用系統對話框；已安裝後自動收起。</li>
                     <li><b>🆕 版本更新提示</b>：偵測到新版本會出 banner「立即更新／稍後」，更新唔會偷換版、解碼歷史與遊戲進度都保留。</li>
                     <li><b>🆕 App 圖標同分享預覽</b>：全套 9 個圖標（maskable 安全區）、WhatsApp/FB 連結預覽圖。</li>
                     <li><b>🆕 無障礙同防呆</b>：所有對話框有 role/aria、Esc 可關、圖示掣有 aria-label；<code>alert/confirm</code> 全改自家對話框。</li>
@@ -754,7 +769,12 @@
                 </ul>
             </section>
             <section class="glass-card p-6 rounded-2xl shadow-sm space-y-3">
-                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-circle-info text-blue-500"></i> 使用須知</h2>
+                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-circle-info text-blue-500" aria-hidden="true"></i> 使用須知</h2>
+                <p class="text-xs leading-relaxed rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-200 p-3">
+                    <i class="fa-solid fa-triangle-exclamation mr-1" aria-hidden="true"></i>
+                    <b>免責：</b>本 App 只作童軍訓練、興趣與輔助通訊之用，<b>不可作為緊急求救的唯一手段</b>。
+                    遇上真正危急情況，請立即致電 <b>999</b>（香港）或當地緊急服務，並使用無線電／電話等可靠方式求援。
+                </p>
                 <ul class="text-xs text-slate-400 space-y-2 list-disc pl-4 leading-relaxed">
                     <li>網頁取用相機/麥克風需 <b>HTTPS</b>（你的 Vercel 網址已是）。</li>
                     <li>實體閃光燈：Android Chrome 多數機型、iPhone Safari (iOS 17.4+) 支援；詳見上方相容表。</li>
@@ -763,35 +783,35 @@
                 </ul>
             </section>
             <footer class="text-center py-4">
-                <p class="text-[10px] font-bold text-slate-600 tracking-widest uppercase">COPYRIGHT © 2026 SCOUT SYSTEM · v5.1.0</p>
+                <p class="text-[10px] font-bold text-slate-600 tracking-widest uppercase">COPYRIGHT © 2026 SCOUT SYSTEM · v5.2.0</p>
             </footer>
         </div>
 
         <!-- 全頁版權 -->
-        <p class="text-center text-[10px] font-bold text-slate-600 tracking-widest uppercase pt-2">COPYRIGHT © 2026 SCOUT SYSTEM · v5.1.0</p>
+        <p class="text-center text-[10px] font-bold text-slate-600 tracking-widest uppercase pt-2">COPYRIGHT © 2026 SCOUT SYSTEM · v5.2.0</p>
     </div>
 
     <!-- ============ BOTTOM TAB BAR ============ -->
-    <nav class="fixed bottom-0 left-0 w-full bg-[#0b1220]/95 backdrop-blur border-t border-slate-800 z-[5000]">
-        <div class="max-w-md mx-auto grid grid-cols-5 py-2">
-            <button class="tab-btn active flex flex-col items-center gap-1" data-tab="send" onclick="switchTab('send')">
-                <div class="tab-icon"><i class="fa-solid fa-tower-broadcast"></i></div>
+    <nav class="fixed bottom-0 left-0 w-full bg-[#0b1220]/95 backdrop-blur border-t border-slate-800 z-[5000]" aria-label="主要導覽">
+        <div class="max-w-md mx-auto grid grid-cols-5 py-2" role="tablist" aria-label="功能分頁">
+            <button type="button" role="tab" id="tab-send" class="tab-btn active flex flex-col items-center gap-1" data-tab="send" aria-controls="page-send" aria-selected="true" tabindex="0" onclick="switchTab('send')">
+                <div class="tab-icon"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i></div>
                 <span class="text-[10px] font-bold">發送</span>
             </button>
-            <button class="tab-btn flex flex-col items-center gap-1" data-tab="decode" onclick="switchTab('decode')">
-                <div class="tab-icon"><i class="fa-solid fa-ear-listen"></i></div>
+            <button type="button" role="tab" id="tab-decode" class="tab-btn flex flex-col items-center gap-1" data-tab="decode" aria-controls="page-decode" aria-selected="false" tabindex="-1" onclick="switchTab('decode')">
+                <div class="tab-icon"><i class="fa-solid fa-ear-listen" aria-hidden="true"></i></div>
                 <span class="text-[10px] font-bold">接收解碼</span>
             </button>
-            <button class="tab-btn flex flex-col items-center gap-1" data-tab="game" onclick="switchTab('game')">
-                <div class="tab-icon"><i class="fa-solid fa-gamepad"></i></div>
+            <button type="button" role="tab" id="tab-game" class="tab-btn flex flex-col items-center gap-1" data-tab="game" aria-controls="page-game" aria-selected="false" tabindex="-1" onclick="switchTab('game')">
+                <div class="tab-icon"><i class="fa-solid fa-gamepad" aria-hidden="true"></i></div>
                 <span class="text-[10px] font-bold">遊戲</span>
             </button>
-            <button class="tab-btn flex flex-col items-center gap-1" data-tab="tools" onclick="switchTab('tools')">
-                <div class="tab-icon"><i class="fa-solid fa-book"></i></div>
+            <button type="button" role="tab" id="tab-tools" class="tab-btn flex flex-col items-center gap-1" data-tab="tools" aria-controls="page-tools" aria-selected="false" tabindex="-1" onclick="switchTab('tools')">
+                <div class="tab-icon"><i class="fa-solid fa-book" aria-hidden="true"></i></div>
                 <span class="text-[10px] font-bold">速查/設定</span>
             </button>
-            <button class="tab-btn flex flex-col items-center gap-1" data-tab="info" onclick="switchTab('info')">
-                <div class="tab-icon"><i class="fa-solid fa-circle-question"></i></div>
+            <button type="button" role="tab" id="tab-info" class="tab-btn flex flex-col items-center gap-1" data-tab="info" aria-controls="page-info" aria-selected="false" tabindex="-1" onclick="switchTab('info')">
+                <div class="tab-icon"><i class="fa-solid fa-circle-question" aria-hidden="true"></i></div>
                 <span class="text-[10px] font-bold">說明/安裝</span>
             </button>
         </div>
@@ -882,16 +902,39 @@
     /* ============================================================
        Tab 切換
     ============================================================ */
-    function switchTab(name) {
+    const TAB_NAMES = ['send', 'decode', 'game', 'tools', 'info'];
+    function switchTab(name, opts) {
+        if (!TAB_NAMES.includes(name)) name = 'send';
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById('page-' + name).classList.add('active');
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-        // 離開解碼頁就停止接收；離開遊戲頁就中止本局
-        if (name !== 'decode' && listening) toggleListen();
-        if (name !== 'game' && typeof game !== 'undefined' &&
-            (!document.getElementById('gamePlayBox').classList.contains('hidden') ||
-             !document.getElementById('gameResultBox').classList.contains('hidden'))) abortGame();
-        window.scrollTo({top:0, behavior:'smooth'});
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            const on = b.dataset.tab === name;
+            b.classList.toggle('active', on);
+            // I6：讀屏要知邊個分頁揀咗；鍵盤用 roving tabindex（只有當前分頁 Tab 得到）
+            b.setAttribute('aria-selected', on ? 'true' : 'false');
+            b.setAttribute('tabindex', on ? '0' : '-1');
+        });
+        // 網址記住分頁：由主畫面／分享連結開返同一個分頁，reload 後亦唔會跳走
+        if (!(opts && opts.silent)) {
+            try {
+                const url = new URL(location.href);
+                if (name === 'send') url.hash = '';
+                else url.hash = name;
+                history.replaceState(null, '', url);
+            } catch (e) {}
+        }
+        // 只喺用戶主動切換時移動焦點；開頁 deep-link 唔好搶焦點（否則讀屏一開聲就讀分頁）
+        if (!(opts && opts.silent)) {
+            try { document.getElementById('tab-' + name)?.focus({ preventScroll: true }); } catch (e) {}
+        }
+        // 離開解碼頁就停止接收；離開遊戲頁就中止本局（silent＝初始化，未有 listener，唔會誤觸）
+        if (!(opts && opts.silent)) {
+            if (name !== 'decode' && listening) toggleListen();
+            if (name !== 'game' && typeof game !== 'undefined' &&
+                (!document.getElementById('gamePlayBox').classList.contains('hidden') ||
+                 !document.getElementById('gameResultBox').classList.contains('hidden'))) abortGame();
+        }
+        try { window.scrollTo({top:0, behavior: (opts && opts.silent) ? 'auto' : 'smooth'}); } catch (e) {}
     }
 
     /* 自己嘅對話框（I8：唔准用 alert / confirm / prompt）
@@ -1012,8 +1055,51 @@
         osc.start(); osc.stop(audioCtx.currentTime + (duration/1000));
         return new Promise(r => setTimeout(r, duration));
     }
+    /* F9 危險動作三步：發送前 3 秒倒數，倒數中可即時取消。
+       理由：發送會着閃光燈／響蜂鳴／震動，喺集會或野外誤按一次 SOS 代價高；
+       而且循環 Beacon 會一直播。倒數期唔開燈、唔響、唔震，取消＝零副作用。 */
+    let countdownTimer = null, countdownResolve = null, countingDown = false;
+    function endCountdown(go){
+        if (countdownTimer){ clearInterval(countdownTimer); countdownTimer = null; }
+        countingDown = false;
+        const r = countdownResolve; countdownResolve = null;
+        if (r) r(go);                       // 只解一次，避免 stop 同 tick 同時 resolve
+    }
+    function cancelCountdown(){
+        if (!countingDown) return;
+        stopFlag = true;
+        endCountdown(false);
+        progressText.innerText = '已取消發送，未發出任何訊號';
+        setTimeout(() => { if (!isTransmitting) progressBox.classList.add('hidden'); }, 1500);
+        updateUIState(false);
+    }
+    function startCountdown(){
+        return new Promise((resolve) => {
+            let n = 3;
+            countingDown = true; stopFlag = false;
+            countdownResolve = resolve;
+            progressBox.classList.remove('hidden');
+            startBtn.disabled = true; startBtn.classList.add('opacity-50');
+            stopBtn.disabled = false; stopBtn.classList.remove('opacity-50');
+            const tick = () => {
+                if (n > 0){
+                    progressText.innerText = '倒數 ' + n + ' 秒…（按「停止」即刻取消）';
+                    n--;
+                } else {
+                    endCountdown(true);
+                }
+            };
+            tick();                         // 即刻顯示「倒數 3 秒」
+            countdownTimer = setInterval(tick, 1000);
+        });
+    }
     async function transmit(){
-        const msg = messageInput.value.trim(); if (!msg) return;
+        if (countingDown || isTransmitting) return;
+        const msg = messageInput.value.trim();
+        if (!msg){ customAlert('請先輸入要發送的內容。'); return; }
+        // 先倒數（唔碰硬件），確認後才開閃光燈／蜂鳴
+        const go = await startCountdown();
+        if (!go) return;
         videoTrack = await initTorch();
         const words = msg.toUpperCase().split(/\s+/), events = [];
         words.forEach((word, wi) => {
@@ -1059,7 +1145,9 @@
         stopTransmission();
     }
     function stopTransmission(){
-        stopFlag = true; isTransmitting = false; flashOverlay.style.display = 'none';
+        if (countingDown){ cancelCountdown(); return; }   // 倒數期撳「停止」＝取消，唔會殘留 promise
+        stopFlag = true; isTransmitting = false;
+        flashOverlay.style.display = 'none';
         if (videoTrack){ setTorch(false, videoTrack); videoTrack.stop(); videoTrack = null; }
         updateUIState(false);
     }
@@ -2114,10 +2202,16 @@
        PWA：安裝入口（I1–I8）+ 版本更新（UP1–UP5）
        一句原則：「安裝要有掣、更新要問過人」
     ============================================================ */
-    const APP_VERSION = 'v5.1.0';
+    const APP_VERSION = 'v5.2.0';
 
-    const isStandalone = () =>
-        window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    // 防禦式：舊 WebView 冇 matchMedia 時唔應該拋錯（會令後面成個初始化腳本停擺）
+    const isStandalone = () => {
+        try {
+            if (typeof window.matchMedia === 'function' &&
+                window.matchMedia('(display-mode: standalone)').matches) return true;
+        } catch (e) {}
+        return window.navigator.standalone === true;
+    };
     const isIos = () =>
         /iphone|ipad|ipod/i.test(navigator.userAgent || '') ||
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);  // iPadOS 13+ 扮 Mac
@@ -2647,6 +2741,17 @@
             }
         }
     });
+
+    // 由網址 hash 還原分頁（#decode／#game／#tools／#info），分享連結同 reload 都停喺同一頁
+    (function initTabFromHash(){
+        const h = (location.hash || '').replace(/^#\/?/, '');
+        const valid = ['send','decode','game','tools','info'];
+        switchTab(valid.includes(h) ? h : 'send', { silent: true });
+        window.addEventListener('hashchange', () => {
+            const n = (location.hash || '').replace(/^#\/?/, '');
+            switchTab(valid.includes(n) ? n : 'send', { silent: true });
+        });
+    })();
 
     setWPM(15);
     setFreq(750);

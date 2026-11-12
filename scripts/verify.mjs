@@ -21,6 +21,10 @@
  *  13) PWA 安裝／更新 I1–I8／UP1–UP5：安裝有掣、更新要問過人、唔准自動 skipWaiting
  *  14) 防呆 F/I8：無 alert()／confirm()／prompt()、對話框有 role="dialog"
  *  15) 安全 A11：解碼內容（不可信輸入）入 innerHTML 前必須 escape
+ *  16) hidden 屬性真係收得起（CSS 串接：utility class 唔可以蓋過 [hidden]）
+ *  17) 無障礙：表單 label 有 for=、動態輸出有 aria-live、分頁有 role/aria-selected
+ *  18) 危險動作：發送前有倒數＋可取消；UI 有免責聲明
+ *  19) 體積預算：部署 payload ≤ 1.0 MB（防止字型／圖檔靜靜變肥）
  *
  * 執行：node scripts/verify.mjs   （任一檢查失敗即以 exit 1 結束）
  */
@@ -57,8 +61,9 @@ const REQUIRED = [
   'icons/og-image.png',
   'assets/css/tailwind.min.css',
   'assets/fontawesome/css/all.min.css',
-  ...['fa-brands-400', 'fa-regular-400', 'fa-solid-900', 'fa-v4compatibility'].flatMap(
-    (f) => [`assets/fontawesome/webfonts/${f}.woff2`, `assets/fontawesome/webfonts/${f}.ttf`]
+  // 只留 woff2：現代瀏覽器全部支援；.ttf fallback 佔 815 KB（部署 60%）但零人用，已移除
+  ...['fa-brands-400', 'fa-regular-400', 'fa-solid-900', 'fa-v4compatibility'].map(
+    (f) => `assets/fontawesome/webfonts/${f}.woff2`
   ),
 ];
 section('1. 必要網頁產物齊全');
@@ -384,10 +389,139 @@ rawInner.length === 0
   ? ok('所有「不可信來源」插入 innerHTML 前都已 escape')
   : rawInner.slice(0, 6).forEach((e) => bad(`innerHTML 插入了未 escape 嘅不可信內容：${e.slice(0, 80)}`));
 
+/* ---------- 16. hidden 屬性真係收得起（CSS 串接）----------
+   2026-11-12 事故：編譯後 Tailwind 把 [hidden]{display:none} 排在 .flex 之前，
+   兩者特異性同為 (0,1,0) → .flex 勝出。結果 <div id="installHelpModal" class="... flex ..." hidden>
+   一開頁就永遠顯示，iOS／桌面用戶一入嚟就被教學卡蓋住；updateBanner 亦關唔走。
+   舊版 15 組檢查全綠都捉唔到，因為佢只 grep 標記，唔睇 CSS 串接。
+   呢組唔靠 jsdom（零依賴原則）——用「特異性 + 出現次序」自己計 cascade。 */
+section('16. hidden 屬性真係收得起（CSS 串接，零依賴）');
+function specificity(sel) {
+  // 只計到「單一 class／屬性選擇器」程度，足夠判斷 .flex vs [hidden]
+  const s2 = sel.replace(/::?[a-z-]+(\([^)]*\))?/gi, '');
+  const ids = (s2.match(/#[\w-]+/g) || []).length;
+  const cls = (s2.match(/\.[\w-]+/g) || []).length
+            + (s2.match(/\[[^\]]+\]/g) || []).length
+            + (s2.match(/(^|[\s>+~])[a-z]+(?=[\s>+~]|$)/gi) || []).filter((x) => x.trim()).length * 0;
+  const els = (s2.match(/(^|[\s>+~:])[a-z][\w-]*(?=[\s>+~,]|$)/gi) || []).filter((x) => x.trim()).length;
+  return [ids, cls, els];
+}
+const cmpSpec = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+const cssFiles = ['assets/css/tailwind.min.css', 'assets/fontawesome/css/all.min.css'];
+const inlineStyles = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
+const cssAll = cssFiles.filter((f) => existsSync(join(ROOT, f)))
+  .map((f) => readFileSync(join(ROOT, f), 'utf8')).join('\n') + '\n' + inlineStyles;
+
+// 全份 CSS 由頭到尾嘅次序
+const ruleOrder = [];
+for (const m of cssAll.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+  const sel = m[1].trim();
+  const decl = m[2];
+  if (/display\s*:/.test(decl)) ruleOrder.push({ sel, disp: /display\s*:\s*([^;!]+)/.exec(decl)[1].trim(), important: /display\s*:[^;]*!important/.test(decl) });
+}
+// hidden 規則：邊條勝出？
+const hiddenRules = ruleOrder.filter((r) => /\[hidden\]/.test(r.sel));
+const displayUtils = ruleOrder.filter((r) => /^\.(flex|grid|block|inline-block|inline-flex|table)$/.test(r.sel.split(',')[0].trim()));
+if (!hiddenRules.length) bad('CSS 完全冇 [hidden] 規則（hidden 屬性會失效）');
+else {
+  const hv = hiddenRules[hiddenRules.length - 1];
+  const hvSpec = specificity(hv.sel.split(',')[0]);
+  // 最壞情況：hidden 元素同時帶 .flex
+  const flexRule = displayUtils.find((r) => /\.flex$/.test(r.sel.trim()));
+  const winsByImportant = hv.important;
+  const winsBySpec = flexRule && cmpSpec(hvSpec, specificity('.flex')) > 0;
+  const winsByOrder = flexRule && ruleOrder.indexOf(hv) > ruleOrder.indexOf(flexRule);
+  if (winsByImportant) ok('hidden 規則有 !important（.flex／.grid 蓋唔過）');
+  else if (winsBySpec || winsByOrder) ok(`hidden 靠${winsBySpec ? '特異性' : '出現次序'}勝出（脆弱，建議加 !important）`);
+  else bad('hidden 唔夠 .flex／.grid 打（utility 排在後、特異性相同）→ 帶 hidden 嘅對話框會一直顯示');
+}
+// 實際標記：邊個元素同時有 hidden + display utility
+// 注意：要逐個開始標籤計，唔可以用「到 hidden 為止」嘅 lazy 掃描（會吞埋上一個元素嘅 class，造成假報警）
+const badHidden = [];
+for (const m of html.matchAll(/<(\w+)\b((?:"[^"]*"|'[^']*'|[^>"'])*?)\shidden(?:\s[^>]*)?>/g)) {
+  const attrs = m[2] || '';
+  const cls = /class="([^"]*)"/.exec(attrs);
+  if (!cls) continue;
+  if (/(^|\s)(flex|grid|block|inline-block|inline-flex)(\s|$)/.test(cls[1])) {
+    const id = (/id="([^"]+)"/.exec(attrs) || [])[1] || '(無 id)';
+    badHidden.push(id);
+  }
+}
+const hiddenGuarded = hiddenRules.some((r) => r.important);
+if (badHidden.length === 0) {
+  ok('冇元素同時用 hidden 屬性 + display utility（即使日後移除 !important 都唔會漏）');
+} else if (hiddenGuarded) {
+  // 有 !important 兜底就唔算 fail，但要記錄低：呢啲元素嘅顯示／隱藏係兩條規則夾出嚟
+  console.log(`  · 有 ${badHidden.length} 個元素（${badHidden.join(', ')}）同時用 hidden + display utility，靠 [hidden]{!important} 兜底 — 目前安全`);
+} else {
+  bad(`以下元素同時有 hidden + .flex／.grid，而 [hidden] 冇 !important：${badHidden.join(', ')}`);
+}
+
+/* ---------- 17. 無障礙（A11 / I6）---------- */
+section('17. 無障礙：label 關聯、動態輸出、分頁語義');
+const labelTags = [...html.matchAll(/<label\b([^>]*)>/g)].map((m) => m[1]);
+// 三種都可以：① for= 指去控件 ② role=group／群組容器用 aria-labelledby 指返個 label id ③ label 包住個 input
+const labelNoFor = labelTags.filter((a) => {
+  if (/\bfor\s*=/.test(a)) return false;
+  const idm = /\bid="([^"]+)"/.exec(a);
+  if (idm && new RegExp(`aria-labelledby="[^"]*\\b${idm[1]}\\b`).test(html)) return false;
+  return true;
+});
+// 有 for 嘅 label，其 for 目標要真係存在
+let badFor = [];
+for (const m of html.matchAll(/<label\b[^>]*\bfor="([^"]+)"/g)) {
+  if (!new RegExp(`id="${m[1]}"`).test(html)) badFor.push(m[1]);
+}
+labelNoFor.length === 0
+  ? ok(`所有 <label>（${labelTags.length} 個）都有 for=，或用 aria-labelledby 由群組容器引用`)
+  : bad(`${labelNoFor.length} 個 <label> 冇 for=，讀屏／點標題唔會聚焦控件`);
+badFor.length === 0 ? ok('label for= 全部指向存在嘅 id') : bad(`label for= 指向唔存在嘅 id：${badFor.join(', ')}`);
+
+// 動態文字區域要有 aria-live，否則讀屏用戶唔知解碼結果
+const LIVE_TARGETS = [['decodedText', '解碼文字'], ['liveMorse', '即時摩斯碼']];
+for (const [id, label] of LIVE_TARGETS) {
+  const re = new RegExp(`id="${id}"[^>]*aria-live="polite"|aria-live="polite"[^>]*id="${id}"`);
+  re.test(html) ? ok(`${label}（#${id}）有 aria-live="polite"`) : bad(`${label}（#${id}）缺 aria-live，讀屏讀唔到解碼結果`);
+}
+
+// 分頁語義：tablist / role=tab / aria-selected / aria-controls
+/role="tablist"/.test(html) ? ok('底部導覽有 role="tablist"') : bad('底部導覽缺 role="tablist"');
+const tabBtns = [...html.matchAll(/role="tab"[^>]*/g)].map((m) => m[0]);
+tabBtns.length >= 5 ? ok(`${tabBtns.length} 個分頁掣有 role="tab"`) : bad(`分頁掣少過 5 個（搵到 ${tabBtns.length}）`);
+for (const attr of ['aria-selected', 'aria-controls']) {
+  tabBtns.every((t) => new RegExp(`${attr}=`).test(t))
+    ? ok(`所有分頁掣都有 ${attr}`) : bad(`有分頁掣缺 ${attr}（讀屏唔知揀咗邊頁）`);
+}
+
+/* ---------- 18. 危險動作：倒數＋取消、免責聲明（F9）---------- */
+section('18. 危險動作防呆（F9）：發送倒數＋免責');
+/function startCountdown\s*\(/.test(html) ? ok('有 startCountdown()：發送前倒數') : bad('發送冇倒數（誤按即刻着燈／響蜂鳴）');
+/function cancelCountdown\s*\(/.test(html) ? ok('有 cancelCountdown()：倒數中可以取消') : bad('倒數中冇得取消');
+/const go = await startCountdown\(\)/.test(html)
+  ? ok('倒數確認之後才 initTorch()／開硬件')
+  : bad('見唔到「倒數 → 才開硬件」嘅次序（倒數形同虛設）');
+/if \(countingDown\)\{ cancelCountdown\(\); return; \}/.test(html)
+  ? ok('「停止」掣喺倒數期＝取消（唔會殘留 promise）') : bad('「停止」掣倒數期行為未定義');
+/不可作為緊急求救的唯一手段/.test(html)
+  ? ok('UI 有免責聲明（不可作緊急求救唯一手段）') : bad('UI 缺免責聲明（只在 README／LICENSE 唔夠）');
+
+/* ---------- 19. 體積預算 ---------- */
+section('19. 部署體積預算');
+const MB_LIMIT = 1.0;
+total / 1048576 <= MB_LIMIT
+  ? ok(`部署 payload ${mb(total)} ≤ ${MB_LIMIT} MB`)
+  : bad(`部署 payload ${mb(total)} 超出 ${MB_LIMIT} MB（S6/S7）— 睇下係咪又加返 .ttf／大圖`);
+const bigFiles = payload.filter((p) => statSync(p).size > 500 * 1024);
+bigFiles.length === 0
+  ? ok('冇單一部署檔案 > 500 KB（S6）')
+  : bad(`單檔超過 500 KB：${bigFiles.map((p) => toRel(p)).join(', ')}`);
+
 /* ---------- 總結 ---------- */
 section('總結');
 if (failed) {
   console.error(`\n❌ 共 ${failed} 項檢查失敗，請修正後再部署。`);
   process.exit(1);
 }
-console.log('\n✅ 全部檢查通過：產物完整、引用零 404、語法零錯誤、無垃圾檔、payload 精簡、核心功能標記全數在位。');
+console.log('\n✅ 全部檢查通過（19 組）：產物完整、引用零 404、語法零錯誤、無垃圾檔、payload 精簡、');
+console.log('   核心功能零倒退、圖標合規、版號同步、PWA 安裝／更新合規、防呆、XSS escape、');
+console.log('   hidden 收得起、無障礙、發送倒數、體積預算。');

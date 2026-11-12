@@ -1,4 +1,4 @@
-# Scout Morse 發訊器 v5.3.0
+# Scout Morse 發訊器 v5.4.0
 
 摩斯密碼發送與接收解碼 **PWA**（可「加到主畫面」當 App 用，免上架）。純靜態、零依賴、離線可用。
 
@@ -18,11 +18,12 @@ COPYRIGHT © 2026 SCOUT SYSTEM · 授權見 [LICENSE](LICENSE)
 | 💡 光源解碼 | 後鏡頭偵測畫面中央亮度變化 |
 | ✋ 手動電報拍鍵 | 短按＝點、長按＝劃；支援全螢幕拍發、鍵盤空白鍵、退格／空格／結算 |
 | 🎮 聽力特訓遊戲 | 8 關卡 × 3 難度，連勝計分 |
-| 📻 頻道頻率 | 750 / 1000 / 1500 Hz，收發同步 |
-| 📤 分享／匯出 | 解碼結果複製、原生分享 |
+| 📻 頻道頻率 | 750 / 1000 / 1500 Hz，收發同步；歷史紀錄連**頻道 Hz ＋ 對方 WPM** |
+| 📤 分享／匯出 | 解碼結果複製、原生分享；**歷史一鍵匯出 CSV／JSON**（CSV 帶 BOM、防公式注入，下載失敗自動複製到剪貼簿） |
 | 📚 速查表 / 音檔離線解碼 | 點 A–Z、0–9 發聲；上傳錄音離線解碼 |
-| 📱 PWA | 安裝入口（Android 系統對話框／iOS 三步教學卡）＋「立即更新／稍後」版本提示 |
+| 📱 PWA | 安裝入口（Android 系統對話框／iOS 三步教學卡）＋「立即更新／稍後」版本提示；**長按圖示捷徑**（接收／拍鍵／遊戲）＋ **share_target**（由其他 App 分享文字帶入發送框，只填不自動發送） |
 | ☀️ 螢幕常亮 | 接收時向系統申請 Wake Lock，長時解碼唔會中途鎖屏；接收頁可一鍵關閉 |
+| 🌐 雙語介面 | 中文／English 一鍵切換（右上角地球掣），全介面含對話框、錯誤訊息、無障礙標籤；選擇記住、預設中文 |
 | ♿ 無障礙 | 所有表單 label 有 `for`／chips 有 `role=group`；解碼結果 `aria-live`；分頁 `role=tab`＋`aria-selected` |
 
 ## 2. 檔案
@@ -35,7 +36,7 @@ icons/                  # 9 個 PNG／ICO（favicon 16/32/48、apple-touch 180�
 assets/css/             # Tailwind（已編譯）
 assets/fontawesome/     # Font Awesome Free 6（本地 woff2，離線用；已移除 815 KB 無人用嘅 .ttf）
 vercel.json             # CSP／安全 header／快取政策／region
-scripts/verify.mjs      # 零依賴驗證（19 組檢查，等同 npm run check）
+scripts/verify.mjs      # 零依賴驗證（24 組檢查，等同 npm run check）
 ```
 
 部署：`vercel.json` 已設定；Vercel 上傳 **18 個檔案 ≈ 0.70 MB**（`.vercelignore` 已擋走文件、CI、`.git`）。
@@ -44,7 +45,7 @@ scripts/verify.mjs      # 零依賴驗證（19 組檢查，等同 npm run check�
 ## 3. 本機驗證
 
 ```bash
-node scripts/verify.mjs          # 靜態驗證 19 組（或 npm run check）
+node scripts/verify.mjs          # 靜態驗證 24 組（或 npm run check）
 node scripts/decode.test.mjs     # 解碼引擎行為測試 83 項（或 npm run test:decode）
 npm test                         # 兩支一齊跑
 ```
@@ -54,7 +55,7 @@ npm test                         # 兩支一齊跑
 用合成正弦波餵 Goertzel→狀態機，比對文字。**種子準確時 48 條組合 100% 全對**；
 亦已記錄「種子估錯 ≥2 倍」時的真實輸出（見 §5）。
 
-20 組檢查：
+24 組檢查：
 
 1. 必要網頁產物齊全
 2. `index.html` 本地引用零 404
@@ -76,6 +77,10 @@ npm test                         # 兩支一齊跑
 18. **危險動作**：發送前倒數＋可取消、倒數後才開硬件、UI 有免責聲明
 19. **體積預算**：payload ≤ 1.0 MB、無單檔 > 500 KB
 20. **螢幕常亮（Wake Lock）**：有取／有放、頁面隱藏後會重取、失敗要靜靜降級（唔准阻住解碼）、iOS 主畫面限制要有處理、唔准用 NoSleep.js 式 hack
+21. **雙語介面（docs/44 L1–L6）**：預設中文、`data-i18n` 可還原、`<html lang>` 同步、掣顯示目標語言、壞值 fallback、**動態 `innerText` 唔准硬寫中文**
+22. **歷史匯出**：CSV 帶 BOM、RFC 4180 引號轉義、`= + - @` 公式注入防護、下載失敗有剪貼簿降級
+23. **Beacon 防誤觸（F9）**：開啟要確認、同 session 只問一次、**冇第二個 `change` listener 繞過確認**
+24. **捷徑／分享**：manifest `shortcuts` ≥3 且 name/url 齊、`share_target` 有對應 `vercel.json` rewrite、分享內容只填入唔自動發送
 
 CI：`.github/workflows/verify.yml`（Actions 已釘 commit SHA）每次 push／PR／每週一跑同一條。
 
@@ -86,7 +91,7 @@ CI：`.github/workflows/verify.yml`（Actions 已釘 commit SHA）每次 push／
 ## 4. 改版流程（唔好漏步）
 
 1. 升版號：`package.json`、`index.html`（`<meta name="app-version">`、`<title>`、`APP_VERSION`、頁尾、更新內容清單）、`manifest.webmanifest`、`sw.js` 的 `APP_VERSION`（快取名自動跟隨）。
-2. 跑 `node scripts/verify.mjs`，19 組全綠。
+2. 跑 `node scripts/verify.mjs`，24 組全綠。
 3. **行為煙霧測試**（可選但建議）：本輪用 jsdom 跑過 20 項 —— 教學卡收得起、Tab 轉頁＋hash、倒數可取消、取消後唔會偷偷發送、XSS 無效、零執行期錯誤。
 4. 真機驗收（PWA 唔可以用模擬器代替）：Android Chrome 與 iPhone Safari 各一次 —— 安裝 → 由主畫面開（確認全螢幕）→ 斷網開（確認離線可用）。
 5. 舊版頁面應出現「有新版本可用」banner；按「立即更新」後自動 reload，解碼歷史與遊戲進度保留。
@@ -104,7 +109,8 @@ CI：`.github/workflows/verify.yml`（Actions 已釘 commit SHA）每次 push／
 - **螢幕常亮（Wake Lock）**：Chrome/Edge 84+、Safari 16.4+、Firefox 126+。
   ⚠️ iOS 16.4–18.3 的「已加到主畫面」模式**無效**（WebKit 已知問題，18.4 才修）；
   這種情況 App 會在接收頁即時標明，並請你手動把「設定 → 螢幕與亮度 → 自動鎖定」調長。
-- **未做英文介面**：真理倉 `docs/44` 嘅 L 系列只適用於 2026-11-08 之後新開嘅 app，本 app 屬豁免；建議下次大版補。
+- **雙語介面覆蓋率**：真理倉 `docs/44` L1–L6 原只適用於 2026-11-08 之後新開嘅 app（本 app 屬豁免），v5.4.0 主動補上。字典 216 條（低於 L1 嘅 300 條閘），已覆蓋全部可見文字、aria-label、placeholder、`title`、對話框；**動態內容如硬體錯誤原文（`getUserMedia` 例外訊息）仍可能是瀏覽器本身語言**。
+- **share_target 限制**：Web Share Target 只在 Android Chrome（已安裝 PWA）生效；iOS／桌面不支援，但用手動貼上完全等價（唔會壞）。
 
 ## 6. 版權與第三方
 

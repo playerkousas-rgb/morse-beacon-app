@@ -3,6 +3,9 @@
   "framework": null,
   "cleanUrls": true,
   "regions": ["hkg1"],
+  "rewrites": [
+    { "source": "/share-target", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/(.*)",

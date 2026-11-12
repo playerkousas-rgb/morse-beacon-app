@@ -26,6 +26,10 @@
  *  18) 危險動作：發送前有倒數＋可取消；UI 有免責聲明
  *  19) 體積預算：部署 payload ≤ 1.0 MB（防止字型／圖檔靜靜變肥）
  *  20) 螢幕常亮（Wake Lock）：有取／有放、隱藏後會重取、失敗要靜靜降級、iOS 限制要講明
+ *  21) 雙語介面（docs/44 L1–L6）：預設中文、可切換、可還原、動態文字行 TT()
+ *  22) 歷史匯出 CSV／JSON：BOM、公式注入防護、失敗降級
+ *  23) Beacon 防誤觸（F9）：要確認、無旁路 listener
+ *  24) PWA 捷徑／share_target：manifest＋vercel rewrite＋唔會自動發送
  *
  * 執行：node scripts/verify.mjs   （任一檢查失敗即以 exit 1 結束）
  */
@@ -537,12 +541,107 @@ for (const [rx, label] of WL) (rx.test(html) ? ok(label) : bad(`Wake Lock：${la
   ? bad('見到 NoSleep.js 式靜音影片 hack（本專案零依賴，唔准）')
   : ok('冇用第三方 NoSleep.js／靜音影片 hack（保持零依賴）');
 
+/* ---------- 21. 雙語介面（docs/44 L1–L6）---------- */
+section('21. 雙語介面（docs/44 L1–L6）：一次一種語言、預設中文、記得住');
+const i18n = [
+  [/const LANG_KEY = 'scout_morse_lang'/, 'L3：儲存鍵有 app 前綴（scout_）'],
+  [/let LANG = 'zh'/, 'L2：預設中文（唔會一開就英文）'],
+  [/en:\s*\{[\s\S]{200,}?'tab\.send'/, 'L1：有 en 字典（唔止幾粒字）'],
+  [/data-i18n=/, '靜態文字用 data-i18n 標記（可還原）'],
+  [/data-i18n-aria/, 'aria-label／title 有翻譯路徑（無障礙一齊雙語）'],
+  [/data-i18n-ph/, 'placeholder 有翻譯路徑'],
+  [/function T\(/, '有 T() 取譯文'],
+  [/function TT\(/, '有 TT() 動態文字（一定要跑 {var} 替換，唔可以漏 template）'],
+  [/function collectI18nNodes/, '有 collectI18nNodes()：先記低中文原文'],
+  [/function applyStaticI18n/, '有 applyStaticI18n()：套用／還原'],
+  [/setAttribute\('lang', LANG === 'en' \? 'en' : 'zh-Hant-HK'\)/, 'L4：<html lang> 跟語言改'],
+  [/setAttribute\('data-lang', LANG\)/, 'L4：data-lang 同步'],
+  [/LANG === 'en' \? '中文' : 'EN'|lang\.switch/, 'L2：掣顯示「目標語言」而唔係當前語言'],
+  [/localStorage\.setItem\(LANG_KEY, LANG\)/, 'L3：選擇寫入 localStorage'],
+  [/function loadLang\(\)[\s\S]{0,300}?=== 'en' \? 'en' : 'zh'/, 'L3：壞值／未設定 fallback 中文（唔會白屏）'],
+  [/applyLang\(loadLang\(\)\)/, '開機有套用已記住嘅語言'],
+];
+for (const [rx, label] of i18n) (rx.test(html) ? ok(label) : bad(`雙語：${label}`));
+// 動態文字漏 TT 的情況：字面中文直接塞 innerText（須逐個查，白名單放靜態建構例外）
+const DYN_CN = [...html.matchAll(/^\s*(?:[\w.$\[\]']+\.)?innerText\s*=\s*(?:`|'|")([^`'"]*[\u4e00-\u9fff][^`'"]*)/gm)]
+  .map((m) => m[1])
+  .filter((t) => !/\$\{|\{/.test(t));
+DYN_CN.length === 0
+  ? ok('動態 innerText 全部行 TT()（冇硬寫中文字面值）')
+  : bad(`有 ${DYN_CN.length} 處 innerText 直接寫中文（英文模式會漏）：${DYN_CN.slice(0, 4).join(' ｜ ')}`);
+
+/* ---------- 22. 歷史記錄匯出（CSV／JSON）---------- */
+section('22. 歷史記錄匯出 CSV／JSON（A11 注入防護＋F4 失敗降級）');
+const exp = [
+  [/function historyToCsv/, '有 historyToCsv()'],
+  [/function exportHistoryCsv/, '有 exportHistoryCsv()'],
+  [/function exportHistoryJson/, '有 exportHistoryJson()'],
+  [/\\uFEFF/, 'CSV 帶 BOM（Excel 開中文唔亂碼）'],
+  [/function csvSafe/, '有 csvSafe()（引號包裹＋公式轉義）'],
+  [/\^\[=\+\\-@\\t\\r\]/, 'CSV 公式注入防護（= + - @ 前綴加 quote）'],
+  [/replace\(\/\"\/g, '\"\"'\)/, 'CSV 引號用 "" 轉義（RFC 4180）'],
+  [/type="button"[^>]*onclick="exportHistoryCsv\(\)"/, '有「匯出 CSV」掣（type=button，唔會誤提交）'],
+  [/type="button"[^>]*onclick="exportHistoryJson\(\)"/, '有「匯出 JSON」掣'],
+  [/hist\.exportCsv|'匯出 CSV'/, '掣文字有雙語'],
+];
+for (const [rx, label] of exp) (rx.test(html) ? ok(label) : bad(`匯出：${label}`));
+/function downloadFile[\s\S]{0,900}?navigator\.clipboard[\s\S]{0,80}?writeText/.test(html)
+  ? ok('下載失敗有 clipboard 降級（唔會靜靜失敗）')
+  : bad('匯出失敗冇任何降級路徑');
+
+/* ---------- 23. Beacon 防誤觸（F9）---------- */
+section('23. Beacon 循環發送防誤觸（F9 危險動作三步）');
+const bcn = [
+  [/id="loopOn"[^>]*onchange="onLoopToggle\(this\)"/, 'Beacon 開關行 onLoopToggle()（唔會一剔即刻狂響）'],
+  [/function onLoopToggle/, '有 onLoopToggle() 實作'],
+  [/customConfirm\([\s\S]{0,400}?Beacon|loopConfirmed/, '有確認對話框＋session 記憶'],
+  [/loopConfirmed/, 'loopConfirmed：同一 session 只問一次，唔會煩'],
+  [/id="loopHint"/, '有提示文字解釋 Beacon 行為'],
+];
+for (const [rx, label] of bcn) (rx.test(html) ? ok(label) : bad(`Beacon：${label}`));
+// 硬性：唔准有第二個 bypass listener（一定係經 onLoopToggle）
+const loopListeners = [...html.matchAll(/(\w*[Ll]oop\w*)\s*\.addEventListener\('change'/g)].map((m) => m[1]);
+loopListeners.length === 0
+  ? ok('冇第二個 change listener 繞過確認（呢個係之前踩過嘅坑）')
+  : bad(`loopOn 仲有旁路 listener：${loopListeners.join(', ')}`);
+
+/* ---------- 24. PWA shortcuts + share_target ---------- */
+section('24. PWA 捷徑同「分享到此 App」（不支援亦要照用）');
+let vercel = null;
+try { vercel = JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8')); } catch (e) { bad(`vercel.json 唔係合法 JSON：${e.message}`); }
+if (manifest) {
+  Array.isArray(manifest.shortcuts) && manifest.shortcuts.length >= 3
+    ? ok(`manifest 有 ${manifest.shortcuts.length} 個 shortcuts（長按圖示直達）`)
+    : bad('manifest 冇 shortcuts（長按圖示冇得直達接收／拍鍵）');
+  for (const sc of manifest.shortcuts || []) {
+    if (!sc.name || !sc.url) bad(`shortcut 缺 name/url：${JSON.stringify(sc)}`);
+  }
+  const st = manifest.share_target;
+  st && st.action && st.params && typeof st.params.text === 'string'
+    ? ok(`share_target → ${st.action}（params 用物件映射，Web Share Target 規格）`)
+    : bad('manifest 冇 share_target（其他 App 唔可以分享文字入嚟）');
+  if (st && st.action) {
+    (vercel?.rewrites || []).some((r) => st.action.endsWith(r.source) || String(r.source).includes(st.action.replace('./', '/')))
+      ? ok('vercel.json 有 rewrite 指去 index.html（否則 Static 404）')
+      : bad(`vercel.json 冇對應 ${st.action} 嘅 rewrite（分享會 404）`);
+  }
+}
+[/function initSharedText/, /params\.get\('text'\)/, /length|slice\(0, 200\)/, /history\.replaceState/].reduce(
+  (acc, rx) => acc && rx.test(html), true)
+  ? ok('initSharedText()：讀 ?text、限長、清 query')
+  : bad('initSharedText() 缺料（讀取／限長／清 query 三件事要齊）');
+// F9：分享入嚟嘅文字絕對唔可以自動發送
+/share-target[\s\S]{0,1500}?startCountdown\(\)/.test(html)
+  ? bad('分享入嚟自動開始發送（違反 F9：要人手確認）')
+  : ok('分享內容只填入輸入框，唔會自動發送（F9）');
+
 /* ---------- 總結 ---------- */
 section('總結');
 if (failed) {
   console.error(`\n❌ 共 ${failed} 項檢查失敗，請修正後再部署。`);
   process.exit(1);
 }
-console.log('\n✅ 全部檢查通過（20 組）：產物完整、引用零 404、語法零錯誤、無垃圾檔、payload 精簡、');
+console.log('\n✅ 全部檢查通過（24 組）：產物完整、引用零 404、語法零錯誤、無垃圾檔、payload 精簡、');
 console.log('   核心功能零倒退、圖標合規、版號同步、PWA 安裝／更新合規、防呆、XSS escape、');
-console.log('   hidden 收得起、無障礙、發送倒數、體積預算、螢幕常亮。');
+console.log('   hidden 收得起、無障礙、發送倒數、體積預算、螢幕常亮、雙語介面、歷史匯出、');
+console.log('   Beacon 防誤觸、捷徑／分享。');

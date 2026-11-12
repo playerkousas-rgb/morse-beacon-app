@@ -26,5 +26,9 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
-      - name: 零依賴驗證（19 組檢查）
+      - name: 零依賴驗證（19 組靜態檢查）
         run: node scripts/verify.mjs
+      # 解碼引擎行為測試：由 index.html 抽出 @@PURE@@ 區塊，餵合成摩斯音訊／亮度序列，
+      # 驗「真係解得到正確文字」（靜態 grep 驗唔到呢樣）
+      - name: 解碼引擎行為測試（83 項）
+        run: node scripts/decode.test.mjs

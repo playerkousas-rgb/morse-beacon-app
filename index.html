@@ -451,7 +451,10 @@
                         <button onclick="setRecvWPM(20)" data-rwpm="20" class="rwpm-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">20</button>
                         <button onclick="setRecvWPM(25)" data-rwpm="25" class="rwpm-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">25</button>
                     </div>
-                </div>
+                <p class="text-[10px] text-amber-300/80 leading-relaxed">
+                    <i class="fa-solid fa-lightbulb mr-1" aria-hidden="true"></i>
+                    解出來是亂碼？多數是「對方速度」估錯：先揀接近嘅速度，或撳「速度」掣即時重新校正（唔需要重開）。
+                </p>
 
                 <!-- sensitivity -->
                 <div id="sensBox">
@@ -551,7 +554,7 @@
                 <div class="flex gap-2">
                     <button onclick="copyDecoded()" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg"><i class="fa-regular fa-copy mr-1"></i>複製</button>
                     <button onclick="shareDecoded()" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg"><i class="fa-solid fa-share-nodes mr-1"></i>分享</button>
-                    <button id="autoWpm" onclick="reseedTiming();customAlert('已重新校正速度基準')" title="按此重新校正速度" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg">速度 <span id="estWpm">—</span></button>
+                    <button id="autoWpm" type="button" onclick="reseedTiming();customAlert('已按目前估算重新校正速度基準')" title="解唔到或亂碼時，撳一下重新校正速度基準" aria-label="重新校正速度基準（解唔到時撳）" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400">速度 <span id="estWpm">—</span></button>
                 </div>
             </section>
 
@@ -1191,6 +1194,7 @@
     let letterOns = [];            // 目前正在組的字母、各音段的原始長度（unit 校正後可重判）
     let recvWPM = 0;               // 0 = 自動（以本機發送 WPM 為種子）
     let sensValue = 50;
+    let unitHint = 0;              // 最近空隙短群估到嘅 1u（0 = 未夠證據）
     // 自適應雙門檻（磁滯）
     let noiseFloor = 0, peak = 0.15, thrOn = 0.1, thrOff = 0.06;
     const DecUI = { level(){}, state(){}, morse(){}, text(){}, wpm(){} };
@@ -1711,6 +1715,7 @@
         onHist = [];
         offHist = [];
         letterOns = [];
+        unitHint = 0;
         noiseFloor = 0; peak = 0.15; thrOn = 0.1; thrOff = 0.06;
         reseedTiming();
         DecUI.morse('');
@@ -1726,6 +1731,7 @@
         onHist = [];
         offHist = [];
         letterOns = [];
+        unitHint = 0;
         DecUI.wpm(Math.round(1200 / dotAvg));
     }
 
@@ -1775,25 +1781,33 @@
     function handleSegment(wasOn, dur){
         if (wasOn){
             if (dur < 15) return;   // 過短毛刺忽略
-            const mid = (dotAvg + dashAvg) / 2;   // 點/劃分界 = 兩群中點
+            // 點/劃分界：以「統一 unit（on 群 dotAvg 同空隙短群 unitHint 調和）」× 2 為界，
+            // 因為 1u=點、3u=劃，分界就係 2u。只靠 dotAvg 嘅話，空隙證據完全用唔到。
+            const uSym = unitHint > 0 ? (dotAvg + unitHint) / 2 : dotAvg;
+            const mid = uSym * 2;
             let sym;
             if (dur < mid){ sym = '.'; dotAvg = dotAvg*0.65 + dur*0.35; }
             else          { sym = '-'; dashAvg = dashAvg*0.75 + dur*0.25; }
             // 夾住不漂移：dot ∈ [25,600]ms，dash/dot 比例 ∈ [1.8, 5]
             dotAvg = Math.min(Math.max(dotAvg, 25), 600);
             dashAvg = Math.min(Math.max(dashAvg, dotAvg*1.8), dotAvg*5);
-            onHist.push(dur);  if (onHist.length > 40) onHist.shift();
+            onHist.push(dur);  while (onHist.length > 6) onHist.shift();   // 滑動窗：早期壞種子唔會永遠污染分群
             letterOns.push(dur);
             currentSymbols += sym;
             // 早期(4/6 個)就整批校正一次，之後每 8 個校正；
             // 若 unit 明顯改變，reestimate 會用 letterOns 重建整串（含本音段），不會重複
-            if (onHist.length === 4 || onHist.length === 6 || onHist.length % 8 === 0) reestimateTiming();
+            if (onHist.length <= 6 || onHist.length % 4 === 0) reestimateTiming();
             DecUI.morse(currentSymbols);
             DecUI.wpm(Math.round(1200 / dotAvg));
             flushedThisSilence = false;
         } else {
-            if (dur >= 15){ offHist.push(dur); if (offHist.length > 40) offHist.shift(); }
-            const u = dotAvg;
+            // 只收「有意義」嘅空隙：開頭／結尾嘅 12–16ms 引導空隙係雜訊（任何真實速度下
+            // 1u 都 ≥ 20ms；30 WPM 已經係 40ms），收咗入 histogram 會令 unit 嚴重低估。
+            if (dur >= 25){ offHist.push(dur); while (offHist.length > 8) offHist.shift(); }
+            // 先用「新證據」校正 unit 才判斷分隔。
+            // 舊版喺呢度用舊 dotAvg → 種子估錯時，字母邊界用錯單位判，成串黏埋（SOS 變 ?）。
+            reestimateTiming();
+            const u = (unitHint > 0 && dur > 12) ? (dotAvg + Math.min(Math.max(unitHint, 20), 600)) / 2 : dotAvg;
             if (dur >= u*2.2){ flushLetter(); }    // >2.2u：字母間隔（標準 3u）
             if (dur >= u*5.5){ flushWord(); }      // >5.5u：單字間隔（標準 7u）
         }
@@ -1810,7 +1824,9 @@
         return { lo: avg(s.slice(0,bi)), hi: avg(s.slice(bi)) };
     }
     function reestimateTiming(){
-        if (onHist.length < 4) return;
+        // 舊版要 onHist ≥ 4 才估 —— 但頭兩三個字母正正最需要校正：
+        // 「空隙」係發射機控制、機器碼級精準（字母內 = 1u），有 3 個空隙就夠分群。
+        if (onHist.length < 4 && offHist.length < 3) return;
         const oldDot = dotAvg;
         const ons  = splitTwoClusters(onHist);
         const offs = splitTwoClusters(offHist);
@@ -1834,6 +1850,12 @@
         }
         dotAvg = Math.min(Math.max(dotAvg, 25), 600);
         dashAvg = Math.min(Math.max(dashAvg, dotAvg*1.8), dotAvg*5);
+        // 用最近空隙嘅「短群」做 unit 提示（字母內空隙 = 1u，係最乾淨嘅證據）。
+        //    只取最近 8 個，而且要「兩群分得開」先用，避免雜訊污染。
+        const recentOffs = offHist.slice(-8);
+        const oc = splitTwoClusters(recentOffs);
+        unitHint = (oc && oc.lo > 10 && oc.lo < 600) ? oc.lo : 0;   // 分唔開群就唔用（避免污染）
+
         // unit 明顯改變 → 用新 unit 重判「目前這個字母」已累積的音段（補救種子不準）
         if (letterOns.length && Math.abs(dotAvg - oldDot)/oldDot > 0.2){
             const mid = (dotAvg + dashAvg) / 2;

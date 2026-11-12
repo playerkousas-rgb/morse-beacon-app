@@ -43,8 +43,15 @@ scripts/verify.mjs      # 零依賴驗證（19 組檢查，等同 npm run check�
 ## 3. 本機驗證
 
 ```bash
-node scripts/verify.mjs     # 或 npm run check（無需 npm install，零依賴）
+node scripts/verify.mjs          # 靜態驗證 19 組（或 npm run check）
+node scripts/decode.test.mjs     # 解碼引擎行為測試 83 項（或 npm run test:decode）
+npm test                         # 兩支一齊跑
 ```
+
+**為甚麼要第二支**：`verify.mjs` 只驗標記在唔在（有 Goertzel、有 REV_MORSE），
+驗唔到「解出嚟嘅字對唔對」。`decode.test.mjs` 由 `@@PURE-START@@` 區塊抽出引擎，
+用合成正弦波餵 Goertzel→狀態機，比對文字。**種子準確時 48 條組合 100% 全對**；
+亦已記錄「種子估錯 ≥2 倍」時的真實輸出（見 §5）。
 
 19 組檢查：
 
@@ -90,6 +97,8 @@ CI：`.github/workflows/verify.yml`（Actions 已釘 commit SHA）每次 push／
 - **免責**：摩斯通訊只屬練習／輔助，唔可以當緊急求救嘅唯一手段（UI 已有提示）。
 - 相機、咪高峰需要 HTTPS 與用戶授權；首次使用會跳權限請求。
 - 本 App 冇後端、冇帳號、冇追蹤；分析只有 Vercel Web Analytics／Speed Insights（匿名字段）。
+- **解碼速度種子**：若不知對方速度而估錯 ≥2 倍，第一個字母可能解錯（之後會自動校正）。
+  UI 已提示：揀接近的「對方速度」，或撳「速度」掣即時重新校正。
 - **未做英文介面**：真理倉 `docs/44` 嘅 L 系列只適用於 2026-11-08 之後新開嘅 app，本 app 屬豁免；建議下次大版補。
 
 ## 6. 版權與第三方

@@ -1,17 +1,33 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
+    <!-- 版本：v5.4.0 · COPYRIGHT © 2026 SCOUT SYSTEM -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0b1220">
-    <title>Scout Morse 發訊器</title>
+    <meta name="app-version" content="v5.4.0">
+    <meta name="copyright" content="© 2026 SCOUT SYSTEM">
+    <meta name="description" content="摩斯密碼發送與接收解碼 PWA：螢幕閃光／實體閃光燈／蜂鳴／震動發送、聲音（Goertzel）與光源解碼、手動電報拍鍵、聽力特訓遊戲。可加到主畫面離線使用。">
+    <title>Scout Morse 發訊器 v5.4.0 — © SCOUT SYSTEM</title>
 
     <!-- PWA -->
     <link rel="manifest" href="manifest.webmanifest">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Scout Morse">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" href="icons/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+
+    <!-- 分享預覽（og:image 必須用絕對網址） -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Scout Morse 發訊器 v5.4.0">
+    <meta property="og:description" content="摩斯密碼發送與接收解碼（聲音／光源／手動拍鍵）＋聽力特訓。可加到主畫面離線使用。">
+    <meta property="og:image" content="https://morse-beacon-app.vercel.app/icons/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
 
     <!-- Vercel Web Analytics -->
     <script>
@@ -158,6 +174,16 @@
         .stage-stars { color:#facc15; letter-spacing:2px; }
         body.theme-light .ans-btn { background:#e2e8f0; color:#0b1220; border-color:#cbd5e1; }
         body.theme-light .stage-card { background:#f1f5f9; border-color:#cbd5e1; color:#0b1220; }
+
+        /* ===== hidden 屬性要贏過 utility class（P1 修正）=====
+           原因：編譯後嘅 Tailwind 把 [hidden]{display:none} 排在 .flex／.grid 之前，
+           而兩者特異性相同（0,1,0）→ 後出現嘅 .flex 勝出。
+           結果：<div id="installHelpModal" class="... flex ..." hidden> 會永遠顯示
+           （iOS／桌面一開頁就見到「加到主畫面」教學卡蓋住民頁），
+           updateBanner 同 customAlert／esc 亦一樣關唔走。
+           HTML 標準：hidden 屬性嘅意義就係「唔顯示」，所以呢條用 !important 補返；
+           要顯示就由 JS 移除 hidden（本檔所有開關都係改 .hidden 屬性，兩條路徑一致）。 */
+        [hidden] { display: none !important; }
     </style>
 </head>
 <body class="p-4 pb-28">
@@ -169,7 +195,7 @@
         <div class="flex items-center justify-between py-2 border-b border-slate-800">
             <div class="flex items-center gap-2">
                 <span class="w-3 h-3 rounded-full bg-cyan-400 animate-pulse"></span>
-                <span class="font-bold text-white text-sm">全螢幕電報拍發</span>
+                <span class="font-bold text-white text-sm" data-i18n="manual.fs">全螢幕電報拍發</span>
             </div>
             <button onclick="closeFullScreenKeyer()" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-lg">
                 <i class="fa-solid fa-xmark"></i>
@@ -179,8 +205,8 @@
         <!-- 輸出即時顯示區 -->
         <div class="py-3 space-y-2">
             <div class="flex justify-between items-center text-xs text-slate-400">
-                <span>解碼文字</span>
-                <span id="fsManualHoldGauge" class="px-3 py-1 rounded-full text-xs font-mono font-bold border border-slate-700 bg-slate-900/60 text-slate-400">待機中</span>
+                <span data-i18n="recv.decoded">解碼文字</span>
+                <span id="fsManualHoldGauge" class="px-3 py-1 rounded-full text-xs font-mono font-bold border border-slate-700 bg-slate-900/60 text-slate-400"><span data-i18n="fs.gauge">待機中</span></span>
             </div>
             <div id="fsDecodedText" class="p-3.5 rounded-2xl bg-[#0f172a] border border-slate-700 text-white font-extrabold text-2xl min-h-[58px] break-words flex items-center">等待拍發…</div>
             <div id="fsLiveMorse" class="p-2 rounded-xl bg-[#0b1220] border border-slate-800 font-mono text-cyan-400 font-bold text-base tracking-widest text-center min-h-[38px] flex items-center justify-center">—</div>
@@ -217,13 +243,13 @@
             </div>
             <div class="grid grid-cols-4 gap-2">
                 <button onclick="manualBackspace()" class="py-3 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95">
-                    <i class="fa-solid fa-delete-left mr-1"></i>退格
+                    <i class="fa-solid fa-delete-left mr-1"></i><span data-i18n="manual.back">退格</span>
                 </button>
                 <button onclick="manualSpace()" class="py-3 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95">
-                    <i class="fa-solid fa-arrows-left-right-to-line mr-1"></i>空格
+                    <i class="fa-solid fa-arrows-left-right-to-line mr-1"></i><span data-i18n="manual.space">空格</span>
                 </button>
                 <button onclick="manualCommitLetter()" class="py-3 rounded-xl font-bold text-xs bg-cyan-900/60 hover:bg-cyan-800 text-cyan-300 border border-cyan-700/50 active:scale-95">
-                    <i class="fa-solid fa-check mr-1"></i>結算
+                    <i class="fa-solid fa-check mr-1"></i><span data-i18n="manual.commit">結算</span>
                 </button>
                 <button onclick="clearDecode()" class="py-3 rounded-xl font-bold text-xs bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-800/50 active:scale-95">
                     <i class="fa-solid fa-trash mr-1"></i>清除
@@ -238,16 +264,25 @@
                 <h1 class="text-3xl font-extrabold tracking-tight text-white">Scout Morse</h1>
                 <p class="text-[#9fb0d6] text-sm mt-1 font-medium italic">Signal Beacon &amp; Decoder</p>
             </div>
-            <button id="installBtn" class="hidden bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-xl">
-                <i class="fa-solid fa-download mr-1"></i>安裝
-            </button>
+            <div class="flex items-center gap-2">
+                <!-- L2：語言掣喺右上、選單掣之前；顯示「目標語言」而唔係當前語言 -->
+                <button id="langBtn" type="button" onclick="toggleLang()"
+                        aria-label="Switch to English" title="Switch to English"
+                        class="bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-400">
+                    <i class="fa-solid fa-globe mr-1" aria-hidden="true"></i><span id="langBtnLabel" data-i18n="lang.switch">EN</span>
+                </button>
+                <button id="installBtn" type="button" aria-label="加入主畫面（安裝成 App）" data-i18n-aria="install.entry"
+                        class="hidden bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-400">
+                    <i class="fa-solid fa-download mr-1" aria-hidden="true"></i><span data-i18n="install.entry">加入主畫面</span>
+                </button>
+            </div>
         </header>
 
         <!-- ============ PAGE: SEND ============ -->
         <div id="page-send" class="page active space-y-4">
             <section class="glass-card p-5 rounded-2xl shadow-sm space-y-4">
                 <div>
-                    <label class="block text-sm font-bold mb-2 text-slate-300">訊息內容</label>
+                    <label class="block text-sm font-bold mb-2 text-slate-300" for="messageInput" data-i18n="send.title">訊息內容</label>
                     <textarea id="messageInput" class="w-full p-4 rounded-xl border border-slate-700 bg-[#0f172a] text-white focus:ring-2 focus:ring-blue-500 outline-none min-h-[100px] font-bold text-lg" placeholder="例如：SOS">SOS HELP</textarea>
                     <div class="flex flex-wrap gap-2 mt-2" id="phraseBar">
                         <button onclick="quickPhrase('SOS')" class="speed-chip px-3 py-1.5 rounded-full font-bold text-xs">SOS</button>
@@ -260,7 +295,7 @@
                     </div>
                 </div>
                 <div>
-                    <label class="block text-sm font-bold mb-2 text-slate-300">摩斯碼預覽</label>
+                    <label class="block text-sm font-bold mb-2 text-slate-300" for="morsePreview" data-i18n="send.morsePreview">摩斯碼預覽</label>
                     <div id="morsePreview" class="p-3 rounded-xl bg-[#0b1220] border border-slate-800 break-all font-mono text-blue-400 font-bold min-h-[50px] text-center tracking-widest">
                         ... --- ... / .... . .-.. .--.
                     </div>
@@ -270,10 +305,10 @@
             <section class="glass-card p-5 rounded-2xl shadow-sm space-y-5">
                 <div>
                     <div class="flex justify-between items-center mb-3">
-                        <label class="text-sm font-bold text-slate-300">發報速度 (WPM)</label>
+                        <label id="wpmGroupLabel" class="text-sm font-bold text-slate-300" data-i18n="send.speed">發報速度 (WPM)</label>
                         <span id="wpmDisplay" class="text-xs font-mono text-blue-400 font-bold">15 WPM</span>
                     </div>
-                    <div class="flex flex-wrap gap-2" id="speedSelector">
+                    <div class="flex flex-wrap gap-2" id="speedSelector" role="group" aria-labelledby="wpmGroupLabel">
                         <button onclick="setWPM(8)" class="speed-chip px-4 py-2 rounded-full font-bold text-xs">8</button>
                         <button onclick="setWPM(12)" class="speed-chip px-4 py-2 rounded-full font-bold text-xs">12</button>
                         <button onclick="setWPM(15)" class="speed-chip px-4 py-2 rounded-full font-bold text-xs active">15</button>
@@ -283,10 +318,10 @@
                 </div>
                 <div class="mt-4">
                     <div class="flex justify-between items-center mb-2">
-                        <label class="text-sm font-bold text-slate-300">頻道頻率 (Hz)</label>
+                        <label id="sendFreqLabel" class="text-sm font-bold text-slate-300" data-i18n="send.freq">頻道頻率 (Hz)</label>
                         <span class="freqDisp text-xs font-mono text-blue-400 font-bold">750 Hz</span>
                     </div>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-wrap gap-2" role="group" aria-labelledby="sendFreqLabel">
                         <button onclick="setFreq(750)" data-freq="750" class="freq-chip speed-chip px-4 py-2 rounded-full font-bold text-xs active">750</button>
                         <button onclick="setFreq(1000)" data-freq="1000" class="freq-chip speed-chip px-4 py-2 rounded-full font-bold text-xs">1000</button>
                         <button onclick="setFreq(1500)" data-freq="1500" class="freq-chip speed-chip px-4 py-2 rounded-full font-bold text-xs">1500</button>
@@ -297,7 +332,7 @@
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center"><i class="fa-solid fa-bolt text-yellow-500 text-sm"></i></div>
                             <div>
-                                <span class="text-sm font-semibold">實體閃光燈</span>
+                                <span class="text-sm font-semibold" data-i18n="send.torch">實體閃光燈</span>
                                 <span id="torchStatus" class="block text-[10px] text-slate-500">偵測中…</span>
                             </div>
                         </div>
@@ -306,7 +341,7 @@
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center"><i class="fa-solid fa-desktop text-blue-500 text-sm"></i></div>
-                            <span class="text-sm font-semibold">螢幕閃光</span>
+                            <span class="text-sm font-semibold" data-i18n="send.screen">螢幕閃光</span>
                         </div>
                         <div class="relative inline-block w-10 h-5"><input type="checkbox" id="screenOn" checked class="toggle-checkbox absolute appearance-none w-10 h-5 bg-slate-700 rounded-full cursor-pointer transition-colors outline-none"></div>
                     </div>
@@ -331,12 +366,20 @@
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center"><i class="fa-solid fa-rotate text-cyan-500 text-sm"></i></div>
-                        <span class="text-sm font-semibold">循環發送 (Beacon)</span>
+                        <span class="text-sm font-semibold" data-i18n="send.beacon">循環發送 (Beacon)</span>
                     </div>
-                    <div class="relative inline-block w-10 h-5"><input type="checkbox" id="loopOn" class="toggle-checkbox absolute appearance-none w-10 h-5 bg-slate-700 rounded-full cursor-pointer transition-colors outline-none"></div>
+                    <!-- F9：無限循環廣播係「危險動作」，一開就要確認；唔用原生 confirm -->
+                    <div class="relative inline-block w-10 h-5">
+                        <input type="checkbox" id="loopOn" onchange="onLoopToggle(this)"
+                               aria-label="循環發送（打開前會先確認）"
+                               class="toggle-checkbox absolute appearance-none w-10 h-5 bg-slate-700 rounded-full cursor-pointer transition-colors outline-none focus:ring-2 focus:ring-cyan-400">
+                    </div>
                 </div>
+                <p id="loopHint" class="text-[10px] text-slate-500 leading-relaxed">
+                    打開後會一直重複播送同一段訊號，直到你按「停止」。喺集會／野外請確認清楚先開。
+                </p>
                 <div id="loopGapBox" style="display:none" class="flex items-center justify-between">
-                    <span class="text-sm font-semibold text-slate-300">重複間隔</span>
+                    <span class="text-sm font-semibold text-slate-300" data-i18n="send.gap">重複間隔</span>
                     <select id="loopGap" class="bg-[#0f172a] border border-slate-700 rounded-lg text-white text-sm px-3 py-2">
                         <option value="1">1 秒</option>
                         <option value="2" selected>2 秒</option>
@@ -383,7 +426,7 @@
             <!-- Live signal monitor -->
             <section class="glass-card p-5 rounded-2xl shadow-sm space-y-4">
                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-bold text-slate-300">即時訊號偵測</label>
+                    <label class="text-sm font-bold text-slate-300" for="levelBar" data-i18n="recv.level">即時訊號偵測</label>
                     <span id="signalState" class="text-xs font-mono font-bold px-2 py-1 rounded-full pill text-slate-400">待機</span>
                 </div>
 
@@ -405,8 +448,8 @@
 
                 <!-- frequency channel -->
                 <div class="flex items-center justify-between">
-                    <label class="text-xs font-bold text-slate-400">頻道頻率</label>
-                    <div class="flex gap-1">
+                    <label id="recvFreqLabel" class="text-xs font-bold text-slate-400">頻道頻率</label>
+                    <div class="flex gap-1" role="group" aria-labelledby="recvFreqLabel">
                         <button onclick="setFreq(750)" data-freq="750" class="freq-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs active">750</button>
                         <button onclick="setFreq(1000)" data-freq="1000" class="freq-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">1000</button>
                         <button onclick="setFreq(1500)" data-freq="1500" class="freq-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">1500</button>
@@ -415,8 +458,8 @@
 
                 <!-- 對方速度（解碼種子） -->
                 <div class="flex items-center justify-between">
-                    <label class="text-xs font-bold text-slate-400">對方速度</label>
-                    <div class="flex gap-1 flex-wrap justify-end">
+                    <label id="recvWpmLabel" class="text-xs font-bold text-slate-400" data-i18n="recv.peerSpeed">對方速度</label>
+                    <div class="flex gap-1 flex-wrap justify-end" role="group" aria-labelledby="recvWpmLabel">
                         <button onclick="setRecvWPM(0)" data-rwpm="0" class="rwpm-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs active">自動</button>
                         <button onclick="setRecvWPM(8)" data-rwpm="8" class="rwpm-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">8</button>
                         <button onclick="setRecvWPM(12)" data-rwpm="12" class="rwpm-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">12</button>
@@ -424,12 +467,15 @@
                         <button onclick="setRecvWPM(20)" data-rwpm="20" class="rwpm-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">20</button>
                         <button onclick="setRecvWPM(25)" data-rwpm="25" class="rwpm-chip speed-chip px-3 py-1.5 rounded-full font-bold text-xs">25</button>
                     </div>
-                </div>
+                <p class="text-[10px] text-amber-300/80 leading-relaxed">
+                    <i class="fa-solid fa-lightbulb mr-1" aria-hidden="true"></i>
+                    解出來是亂碼？多數是「對方速度」估錯：先揀接近嘅速度，或撳「速度」掣即時重新校正（唔需要重開）。
+                </p>
 
                 <!-- sensitivity -->
                 <div id="sensBox">
                     <div class="flex justify-between items-center mb-1">
-                        <label class="text-xs font-bold text-slate-400">靈敏度</label>
+                        <label class="text-xs font-bold text-slate-400" for="sensSlider" data-i18n="recv.sensitivity">靈敏度</label>
                         <span id="sensDisp" class="text-[10px] font-mono text-blue-400">自動</span>
                     </div>
                     <input id="sensSlider" type="range" min="0" max="100" value="50" class="w-full accent-blue-500">
@@ -440,10 +486,10 @@
             <!-- 手動電報拍發區 -->
             <section id="manualKeySection" class="glass-card p-5 rounded-2xl shadow-sm space-y-4 hidden">
                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-bold text-slate-300 flex items-center gap-1.5">
-                        <i class="fa-solid fa-hand-pointer text-cyan-400"></i>
+                    <p class="text-sm font-bold text-slate-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-hand-pointer text-cyan-400" aria-hidden="true"></i>
                         <span>手動電報拍鍵</span>
-                    </label>
+                    </p>
                     <button onclick="openFullScreenKeyer()" class="px-3 py-1 rounded-xl text-xs font-bold bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-600/50 flex items-center gap-1.5 transition-all">
                         <i class="fa-solid fa-expand"></i> 全螢幕拍發
                     </button>
@@ -498,13 +544,13 @@
                 <!-- 輔助控制按鍵 -->
                 <div class="grid grid-cols-4 gap-2 pt-1">
                     <button onclick="manualBackspace()" class="py-2.5 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95 transition-all">
-                        <i class="fa-solid fa-delete-left mr-1"></i>退格
+                        <i class="fa-solid fa-delete-left mr-1"></i><span data-i18n="manual.back">退格</span>
                     </button>
                     <button onclick="manualSpace()" class="py-2.5 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 active:scale-95 transition-all">
-                        <i class="fa-solid fa-arrows-left-right-to-line mr-1"></i>空格
+                        <i class="fa-solid fa-arrows-left-right-to-line mr-1"></i><span data-i18n="manual.space">空格</span>
                     </button>
                     <button onclick="manualCommitLetter()" class="py-2.5 rounded-xl font-bold text-xs bg-cyan-900/50 hover:bg-cyan-800 text-cyan-300 border border-cyan-700/50 active:scale-95 transition-all">
-                        <i class="fa-solid fa-check mr-1"></i>結算
+                        <i class="fa-solid fa-check mr-1"></i><span data-i18n="manual.commit">結算</span>
                     </button>
                     <button onclick="clearDecode()" class="py-2.5 rounded-xl font-bold text-xs bg-red-950/50 hover:bg-red-900 text-red-300 border border-red-800/50 active:scale-95 transition-all">
                         <i class="fa-solid fa-trash mr-1"></i>清除
@@ -515,17 +561,30 @@
             <!-- Decoded output -->
             <section class="glass-card p-5 rounded-2xl shadow-sm space-y-3">
                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-bold text-slate-300">即時摩斯碼</label>
+                    <label class="text-sm font-bold text-slate-300" for="liveMorse" data-i18n="recv.liveMorse">即時摩斯碼</label>
                     <button onclick="clearDecode()" class="text-[10px] text-slate-400 hover:text-white"><i class="fa-solid fa-trash mr-1"></i>清除</button>
                 </div>
-                <div id="liveMorse" class="p-3 rounded-xl bg-[#0b1220] border border-slate-800 break-all font-mono text-cyan-400 font-bold min-h-[44px] tracking-widest text-center">—</div>
-                <label class="block text-sm font-bold text-slate-300 pt-1">解碼文字</label>
-                <div id="decodedText" class="p-4 rounded-xl bg-[#0f172a] border border-slate-700 break-words font-bold text-lg min-h-[60px] text-white">等待訊號…</div>
+                <div id="liveMorse" aria-live="polite" aria-atomic="true" class="p-3 rounded-xl bg-[#0b1220] border border-slate-800 break-all font-mono text-cyan-400 font-bold min-h-[44px] tracking-widest text-center">—</div>
+                <label class="block text-sm font-bold text-slate-300 pt-1" for="decodedText" data-i18n="recv.decoded">解碼文字</label>
+                <div id="decodedText" role="status" aria-live="polite" aria-atomic="true" class="p-4 rounded-xl bg-[#0f172a] border border-slate-700 break-words font-bold text-lg min-h-[60px] text-white">等待訊號…</div>
                 <div class="flex gap-2">
-                    <button onclick="copyDecoded()" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg"><i class="fa-regular fa-copy mr-1"></i>複製</button>
-                    <button onclick="shareDecoded()" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg"><i class="fa-solid fa-share-nodes mr-1"></i>分享</button>
-                    <button id="autoWpm" onclick="reseedTiming();customAlert('已重新校正速度基準')" title="按此重新校正速度" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg">速度 <span id="estWpm">—</span></button>
+                    <button onclick="copyDecoded()" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg"><i class="fa-regular fa-copy mr-1"></i data-i18n="recv.copy">複製</button>
+                    <button onclick="shareDecoded()" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg"><i class="fa-solid fa-share-nodes mr-1"></i data-i18n="recv.share">分享</button>
+                    <button id="autoWpm" type="button" onclick="reseedTiming();customAlert(TT('common.recalibrated', '已按目前估算重新校正速度基準'))" title="解唔到或亂碼時，撳一下重新校正速度基準" aria-label="重新校正速度基準（解唔到時撳）" class="flex-1 bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400">速度 <span id="estWpm">—</span></button>
                 </div>
+                <!-- 螢幕常亮（Wake Lock）：接收期間手機唔會變暗／鎖屏 -->
+                <div class="flex items-center justify-between pt-1">
+                    <span class="text-[10px] text-slate-400">
+                        <i class="fa-solid fa-sun mr-1" aria-hidden="true"></i>接收時保持螢幕開啟
+                    </span>
+                    <label class="relative inline-block w-10 h-5" for="wakeOn">
+                        <input type="checkbox" id="wakeOn" checked onclick="setWakeLockEnabled(this.checked)"
+                               aria-label="接收時保持螢幕開啟"
+                               class="toggle-checkbox absolute appearance-none w-10 h-5 bg-slate-700 rounded-full cursor-pointer transition-colors outline-none focus:ring-2 focus:ring-cyan-400">
+                    </label>
+                </div>
+                <p id="wakeLockStatus" role="status" aria-live="polite"
+                   class="hidden text-[10px] leading-relaxed rounded-lg px-2.5 py-2 border"></p>
             </section>
 
             <button id="listenBtn" onclick="toggleListen()" class="w-full bg-green-600 hover:bg-green-700 text-white font-extrabold py-4 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95">
@@ -538,13 +597,13 @@
             <!-- 錄音檔離線解碼 -->
             <section id="fileDecodeSection" class="glass-card p-5 rounded-2xl shadow-sm space-y-3">
                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-bold text-slate-300"><i class="fa-solid fa-file-audio text-cyan-400 mr-1"></i>音檔離線解碼</label>
+                    <label class="text-sm font-bold text-slate-300" for="audioFile"><i class="fa-solid fa-file-audio text-cyan-400 mr-1" aria-hidden="true"></i>音檔離線解碼</label>
                     <span class="text-[10px] text-slate-500">所選頻率 · 自動估速</span>
                 </div>
                 <p class="text-[11px] text-slate-500 leading-relaxed">上傳一段含所選頻率蜂鳴的錄音（wav/mp3/m4a），離線解出內容。</p>
-                <label class="block">
+                <div class="block">
                     <input id="audioFile" type="file" accept="audio/*" class="block w-full text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white file:font-bold file:cursor-pointer">
-                </label>
+                </div>
                 <div id="fileDecodeBox" class="hidden">
                     <div class="text-[10px] text-slate-500 mb-1">檔案解碼結果</div>
                     <div id="fileMorse" class="p-2 rounded-lg bg-[#0b1220] border border-slate-800 font-mono text-cyan-400 text-xs break-all tracking-widest min-h-[32px]">—</div>
@@ -555,8 +614,18 @@
             <!-- 解碼歷史 -->
             <section class="glass-card p-5 rounded-2xl shadow-sm space-y-3">
                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-bold text-slate-300"><i class="fa-solid fa-clock-rotate-left text-purple-400 mr-1"></i>解碼歷史</label>
-                    <button onclick="clearHistory()" class="text-[10px] text-slate-400 hover:text-red-400"><i class="fa-solid fa-trash mr-1"></i>全部清除</button>
+                    <p class="text-sm font-bold text-slate-300"><i class="fa-solid fa-clock-rotate-left text-purple-400 mr-1" aria-hidden="true"></i data-i18n="hist.title">解碼歷史</p>
+                    <button onclick="clearHistory()" class="text-[10px] text-slate-400 hover:text-red-400"><i class="fa-solid fa-trash mr-1" aria-hidden="true"></i data-i18n="hist.clearAll">全部清除</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="exportHistoryCsv()" aria-label="匯出解碼歷史為 CSV（Excel 可開）"
+                            class="bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-400">
+                        <i class="fa-solid fa-file-csv" aria-hidden="true"></i>匯出 CSV
+                    </button>
+                    <button type="button" onclick="exportHistoryJson()" aria-label="匯出解碼歷史為 JSON"
+                            class="bg-[#1e293b] hover:bg-slate-700 text-slate-200 text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-400">
+                        <i class="fa-solid fa-file-code" aria-hidden="true"></i>匯出 JSON
+                    </button>
                 </div>
                 <div id="historyList" class="space-y-2 max-h-72 overflow-y-auto"></div>
                 <p id="historyEmpty" class="text-[11px] text-slate-500 text-center py-2">尚無紀錄。完成一次接收（按停止）後會自動存檔。</p>
@@ -572,15 +641,15 @@
                 </div>
                 <p class="text-[11px] text-slate-500 leading-relaxed">聽一段電報音（或看信號燈），選出正確字元。共 8 大關卡 × 3 種難度，每關 10 題，答對 8 題即可解鎖下一關！</p>
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1">裝備</label>
-                    <div class="grid grid-cols-2 gap-2">
+                    <p class="block text-xs font-bold text-slate-400 mb-1" id="equipLabel">裝備</p>
+                    <div class="grid grid-cols-2 gap-2" role="group" aria-labelledby="equipLabel">
                         <button id="equipSound" onclick="setGameEquip('sound')" class="py-3 rounded-xl font-bold text-sm bg-blue-600 text-white flex items-center justify-center gap-2"><i class="fa-solid fa-tower-broadcast"></i> 電報音</button>
                         <button id="equipLamp" onclick="setGameEquip('lamp')" class="py-3 rounded-xl font-bold text-sm bg-[#1e293b] text-slate-300 flex items-center justify-center gap-2"><i class="fa-solid fa-lightbulb"></i> 信號燈</button>
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1">難度</label>
-                    <div class="grid grid-cols-3 gap-2">
+                    <p class="block text-xs font-bold text-slate-400 mb-1" id="diffLabel">難度</p>
+                    <div class="grid grid-cols-3 gap-2" role="group" aria-labelledby="diffLabel">
                         <button id="diffEasy" onclick="setGameDiff('easy')" class="py-2 rounded-xl font-bold text-xs bg-blue-600 text-white">簡單<span class="block text-[9px] font-normal opacity-75">8WPM・顯示點劃</span></button>
                         <button id="diffMed" onclick="setGameDiff('med')" class="py-2 rounded-xl font-bold text-xs bg-[#1e293b] text-slate-300">中等<span class="block text-[9px] font-normal opacity-75">12WPM・純聽音</span></button>
                         <button id="diffHard" onclick="setGameDiff('hard')" class="py-2 rounded-xl font-bold text-xs bg-[#1e293b] text-slate-300">困難<span class="block text-[9px] font-normal opacity-75">18WPM・限時作答</span></button>
@@ -591,7 +660,7 @@
             <!-- 關卡選擇 -->
             <section id="stageSelectBox" class="glass-card p-5 rounded-2xl shadow-sm space-y-3">
                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-bold text-slate-300"><i class="fa-solid fa-map text-green-400 mr-1"></i>選擇關卡</label>
+                    <p class="text-sm font-bold text-slate-300"><i class="fa-solid fa-map text-green-400 mr-1" aria-hidden="true"></i>選擇關卡</p>
                     <button onclick="resetGameProgress()" class="text-[10px] text-slate-500 hover:text-red-400"><i class="fa-solid fa-rotate-left mr-1"></i>重置進度</button>
                 </div>
                 <div id="stageGrid" class="grid grid-cols-2 gap-2"></div>
@@ -661,9 +730,18 @@
 
             <!-- 外觀設定 -->
             <section class="glass-card p-5 rounded-2xl shadow-sm space-y-4">
-                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sliders text-green-400"></i> 外觀設定</h2>
+                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sliders text-green-400" aria-hidden="true"></i> <span data-i18n="set.title">外觀設定</span></h2>
+                <!-- 語言：主掣喺右上角（L2），呢度係第二入口＋說明 -->
                 <div class="flex items-center justify-between">
-                    <span class="text-sm font-semibold text-slate-300">主題</span>
+                    <span class="text-sm font-semibold text-slate-300" data-i18n="set.lang">語言 Language</span>
+                    <button type="button" onclick="toggleLang()" aria-label="Switch to English"
+                            class="px-3 py-2 rounded-lg text-xs font-bold bg-[#1e293b] text-slate-200 hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-400">
+                        <i class="fa-solid fa-globe mr-1" aria-hidden="true"></i><span id="langBtnLabel2" data-i18n="lang.switch">EN</span>
+                    </button>
+                </div>
+                <p class="text-[10px] text-slate-500 leading-relaxed" data-i18n="set.langHint">切換會即時套用整個介面，選擇會記住喺呢部機。Switches the whole interface; remembered on this device.</p>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-semibold text-slate-300" data-i18n="set.theme">主題</span>
                     <div class="flex gap-2" id="themeSel">
                         <button data-theme="dark" class="px-3 py-2 rounded-lg text-xs font-bold bg-blue-600 text-white">深色</button>
                         <button data-theme="light" class="px-3 py-2 rounded-lg text-xs font-bold bg-[#1e293b] text-slate-300">淺色</button>
@@ -683,17 +761,40 @@
         <!-- ============ PAGE: INFO ============ -->
         <div id="page-info" class="page space-y-4">
             <section class="glass-card p-6 rounded-2xl shadow-2xl space-y-5 border-t-4 border-t-blue-600">
-                <h2 class="text-xl font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-mobile-screen-button text-blue-500"></i> 安裝成 App（免上架）</h2>
+                <h2 class="text-xl font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-mobile-screen-button text-blue-500"></i> <span data-i18n="info.installTitle">安裝成 App（免上架）</span></h2>
                 <p class="text-[#9fb0d6] text-sm leading-relaxed">本頁就是 PWA，可直接「加到主畫面」當 App 用，免安裝、免上架、免費。</p>
                 <div class="space-y-2 text-sm text-slate-300">
-                    <p class="font-bold text-blue-400"><i class="fa-brands fa-android mr-1"></i> Android (Chrome)</p>
-                    <p class="text-xs text-slate-400 leading-relaxed">右上角 ⋮ → 「加到主畫面 / 安裝應用程式」。或點右上「安裝」按鈕。</p>
-                    <p class="font-bold text-blue-400 pt-2"><i class="fa-brands fa-apple mr-1"></i> iPhone (Safari)</p>
-                    <p class="text-xs text-slate-400 leading-relaxed">底部「分享」→ 「加入主畫面」。接收解碼、聲音、螢幕閃光皆可用。實體閃光燈需 iOS 17.4 以上的 Safari。</p>
+                    <p class="font-bold text-blue-400"><i class="fa-brands fa-android mr-1" aria-hidden="true"></i data-i18n="info.android"> Android (Chrome)</p>
+                    <p class="text-xs text-slate-400 leading-relaxed" data-i18n="info.androidSteps">右上角 ⋮ → 「加到主畫面 / 安裝應用程式」。或點右上「加入主畫面」掣。</p>
+                    <p class="font-bold text-blue-400 pt-2"><i class="fa-brands fa-apple mr-1" aria-hidden="true"></i data-i18n="info.ios"> iPhone / iPad (Safari)</p>
+                    <p class="text-xs text-slate-400 leading-relaxed" data-i18n="info.iosSteps">底部「分享」→ 「加入主畫面」。接收解碼、聲音、螢幕閃光皆可用。實體閃光燈需 iOS 17.4 以上的 Safari；其他 iOS 瀏覽器（Chrome／Edge／Firefox）都係 WebKit，一樣行「分享 → 加入主畫面」。</p>
                 </div>
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button id="installBtn2" type="button" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-400">
+                        <i class="fa-solid fa-download mr-1" aria-hidden="true"></i>加入主畫面
+                    </button>
+                    <button id="checkUpdateBtn" type="button" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-3 rounded-xl">
+                        <i class="fa-solid fa-rotate-right mr-1" aria-hidden="true"></i>檢查更新
+                    </button>
+                </div>
+                <p class="text-[10px] text-slate-500 text-center">目前版本 <span id="appVersionLabel">v5.4.0</span> · 離線可用 · <span id="swStatusLabel">Service Worker：檢查中…</span></p>
             </section>
             <section class="glass-card p-6 rounded-2xl shadow-sm space-y-3">
-                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-bolt text-yellow-400"></i> 實體閃光燈相容性</h2>
+                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sun text-amber-400" aria-hidden="true"></i> 螢幕保持開啟（接收時唔鎖屏）</h2>
+                <p class="text-xs text-slate-400 leading-relaxed">開始接收時，App 會向系統申請「螢幕常亮」，令手機唔會喺解碼途中變暗或鎖屏（鎖屏＝相機／收音即刻停，解到一半會斷）。</p>
+                <div class="space-y-2 text-xs">
+                    <div class="flex items-start justify-between gap-3"><span class="text-slate-300">Android Chrome／Edge</span><span class="text-green-400 font-bold shrink-0">✓ 支援</span></div>
+                    <div class="flex items-start justify-between gap-3"><span class="text-slate-300">iPhone／iPad（Safari 分頁，16.4+）</span><span class="text-green-400 font-bold shrink-0">✓ 支援</span></div>
+                    <div class="flex items-start justify-between gap-3"><span class="text-slate-300">iPhone「已加到主畫面」（iOS 18.3 或以下）</span><span class="text-yellow-400 font-bold shrink-0">△ 無效</span></div>
+                    <div class="flex items-start justify-between gap-3"><span class="text-slate-300">Firefox 126+／桌面瀏覽器</span><span class="text-green-400 font-bold shrink-0">✓ 支援</span></div>
+                </div>
+                <p class="text-[10px] text-slate-500 leading-relaxed pt-1">
+                    ※ iOS 18.3 或以下嘅「主畫面模式」有系統限制（WebKit 已知問題），App 會即時喺接收頁標明。
+                    呢個情況下請去「<b>設定 → 螢幕與亮度 → 自動鎖定</b>」把時間調長（例如 5 分鐘或「永不」），一樣可以連續解碼。
+                </p>
+            </section>
+            <section class="glass-card p-6 rounded-2xl shadow-sm space-y-3">
+                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-bolt text-yellow-400"></i data-i18n="info.torchTitle"> <span data-i18n="info.torchTitle">實體閃光燈相容性</span></h2>
                 <p class="text-[11px] text-slate-500 leading-relaxed">本機是否支援會在「發送」頁的開關下方自動標示。下表為一般情況：</p>
                 <div class="space-y-2">
                     <div class="flex items-center justify-between text-xs"><span class="text-slate-300">Android Chrome / Edge / Samsung</span><span class="text-green-400 font-bold">✓ 支援</span></div>
@@ -706,9 +807,24 @@
                 <p class="text-[10px] text-slate-500 leading-relaxed pt-1">※ 需符合：HTTPS、後鏡頭具 LED、且使用者允許相機權限。不支援時請改用「螢幕閃光」。</p>
             </section>
             <section class="glass-card p-6 rounded-2xl shadow-sm space-y-3">
-                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sparkles text-yellow-400"></i> V5.0 新功能</h2>
+                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-sparkles text-yellow-400" aria-hidden="true"></i> v5.4.0 更新內容</h2>
                 <ul class="text-xs text-slate-400 space-y-1.5 list-disc pl-4 leading-relaxed">
-                    <li><b>🆕 擬真手機電報拍鍵 & 即時解碼</b>：運用手機觸控按壓螢幕產生長短音電報音效、信號燈閃光與觸覺震動，即時長短音計時儀表與進度條，自動分段解碼，並支援全螢幕拍發模式、鍵盤空白鍵拍發、退格刪除與空格。</li>
+                    <li><b>🆕 雙語介面（中文／English）</b>：右上角地球掣一按即切換，全介面（含對話框、錯誤訊息、無障礙標籤）同步翻譯；選擇會記住，預設中文。</li>
+                    <li><b>🆕 解碼歷史可匯出</b>：一鍵匯出 CSV（Excel 直接開，中文唔亂碼、已防公式注入）或 JSON（含完整欄位）；瀏覽器唔支援下載時會自動複製到剪貼簿。</li>
+                    <li><b>🆕 歷史記低頻道同對方速度</b>：每條紀錄連 Hz 同對方 WPM，方便重測同一條線路。</li>
+                    <li><b>🆕 Beacon 循環發送防誤觸</b>：開啟前要確認一次（同一 session 只問一次），避免喺營地／比賽誤按而一直響。</li>
+                    <li><b>🆕 長按 App 圖標有捷徑</b>（接收／拍鍵／遊戲），並可以由其他 App「分享」文字直接帶入發送框（只會填入，唔會自動發送）。</li>
+                    <li><b>🆕 接收時螢幕保持開啟</b>（Wake Lock）：光源／聲音解碼期間唔會再自動變暗鎖屏。接收頁可一鍵關閉。</li>
+                    <li><b>🔧 修正：教學卡唔會再自己彈出</b>（之前一開頁會被「加到主畫面」卡片蓋住、關唔走；現已修好）。</li>
+                    <li><b>🆕 發送前 3 秒倒數</b>：倒數期唔會開燈／響聲，撳「停止」即時取消，避免誤按廣播。</li>
+                    <li><b>🆕 底部 Tab 會記住位置</b>：網址加 <code>#decode</code> 等，reload 或分享都停在同一頁；讀屏／鍵盤可正常操作。</li>
+                    <li><b>♿ 無障礙</b>：表單標籤全部對應、解碼結果加讀屏播報（aria-live）、分頁有完整語義。</li>
+                    <li><b>📉 體積減半</b>：移除 815 KB 無人用嘅舊字型格式，離線下載更快。</li>
+                    <li><b>安裝入口</b>：右上角「加入主畫面」掣；iPhone 會出 Safari 三步教學卡，Android 用系統對話框；已安裝後自動收起。</li>
+                    <li><b>🆕 版本更新提示</b>：偵測到新版本會出 banner「立即更新／稍後」，更新唔會偷換版、解碼歷史與遊戲進度都保留。</li>
+                    <li><b>🆕 App 圖標同分享預覽</b>：全套 9 個圖標（maskable 安全區）、WhatsApp/FB 連結預覽圖。</li>
+                    <li><b>🆕 無障礙同防呆</b>：所有對話框有 role/aria、Esc 可關、圖示掣有 aria-label；<code>alert/confirm</code> 全改自家對話框。</li>
+                    <li><b>擬真手機電報拍鍵 & 即時解碼</b>：運用手機觸控按壓螢幕產生長短音電報音效、信號燈閃光與觸覺震動，即時長短音計時儀表與進度條，自動分段解碼，並支援全螢幕拍發模式、鍵盤空白鍵拍發、退格刪除與空格。</li>
                     <li><b>🆕 摩斯聽力特訓遊戲</b>：8 關卡 × 3 難度，電報音/信號燈雙裝備，連勝計分、限時作答，答對 8 題解鎖下一關（見「遊戲」頁）。</li>
                     <li><b>🆕 聲音解碼引擎 V5</b>：改用取樣時鐘計時＋雙門檻磁滯＋點劃整批分群，修復只能解出 E、長音（劃）完全聽不到的問題。</li>
                     <li><b>🆕 對方速度設定</b>：接收頁可指定對方 WPM 當解碼種子，快慢電碼都更穩。</li>
@@ -719,12 +835,17 @@
                     <li><b>解碼歷史</b>：每次接收自動存檔，可複製、分享、刪除。</li>
                     <li><b>速查表/教學</b>：點 A–Z/0–9 聽聲學摩斯（在「速查/設定」頁）。</li>
                     <li><b>音檔離線解碼</b>：上傳含所選頻率蜂鳴的錄音直接解碼。</li>
-                    <li><b>快速短語</b>：SOS/OK/HELP 一鍵填入發送。</li>
+                    <li><b data-i18n="send.phrase">快速短語</b>：SOS/OK/HELP 一鍵填入發送。</li>
                     <li><b>主題與字級</b>：深/淺色、字體大小，設定會記住。</li>
                 </ul>
             </section>
             <section class="glass-card p-6 rounded-2xl shadow-sm space-y-3">
-                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-circle-info text-blue-500"></i> 使用須知</h2>
+                <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-circle-info text-blue-500" aria-hidden="true"></i data-i18n="info.notice"> <span data-i18n="info.notice">使用須知</span></h2>
+                <p class="text-xs leading-relaxed rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-200 p-3">
+                    <i class="fa-solid fa-triangle-exclamation mr-1" aria-hidden="true"></i>
+                    <b>免責：</b>本 App 只作童軍訓練、興趣與輔助通訊之用，<b>不可作為緊急求救的唯一手段</b>。
+                    遇上真正危急情況，請立即致電 <b>999</b>（香港）或當地緊急服務，並使用無線電／電話等可靠方式求援。
+                </p>
                 <ul class="text-xs text-slate-400 space-y-2 list-disc pl-4 leading-relaxed">
                     <li>網頁取用相機/麥克風需 <b>HTTPS</b>（你的 Vercel 網址已是）。</li>
                     <li>實體閃光燈：Android Chrome 多數機型、iPhone Safari (iOS 17.4+) 支援；詳見上方相容表。</li>
@@ -733,50 +854,355 @@
                 </ul>
             </section>
             <footer class="text-center py-4">
-                <p class="text-[10px] font-bold text-slate-600 tracking-widest uppercase">COPYRIGHT © 2026 SCOUT SYSTEM · V5.0</p>
+                <p class="text-[10px] font-bold text-slate-600 tracking-widest uppercase">COPYRIGHT © 2026 SCOUT SYSTEM · v5.4.0</p>
             </footer>
         </div>
 
         <!-- 全頁版權 -->
-        <p class="text-center text-[10px] font-bold text-slate-600 tracking-widest uppercase pt-2">COPYRIGHT © 2026 SCOUT SYSTEM</p>
+        <p class="text-center text-[10px] font-bold text-slate-600 tracking-widest uppercase pt-2">COPYRIGHT © 2026 SCOUT SYSTEM · v5.4.0</p>
     </div>
 
     <!-- ============ BOTTOM TAB BAR ============ -->
-    <nav class="fixed bottom-0 left-0 w-full bg-[#0b1220]/95 backdrop-blur border-t border-slate-800 z-[5000]">
-        <div class="max-w-md mx-auto grid grid-cols-5 py-2">
-            <button class="tab-btn active flex flex-col items-center gap-1" data-tab="send" onclick="switchTab('send')">
-                <div class="tab-icon"><i class="fa-solid fa-tower-broadcast"></i></div>
-                <span class="text-[10px] font-bold">發送</span>
+    <nav class="fixed bottom-0 left-0 w-full bg-[#0b1220]/95 backdrop-blur border-t border-slate-800 z-[5000]" aria-label="主要導覽">
+        <div class="max-w-md mx-auto grid grid-cols-5 py-2" role="tablist" aria-label="功能分頁">
+            <button type="button" role="tab" id="tab-send" class="tab-btn active flex flex-col items-center gap-1" data-tab="send" aria-controls="page-send" aria-selected="true" tabindex="0" onclick="switchTab('send')">
+                <div class="tab-icon"><i class="fa-solid fa-tower-broadcast" aria-hidden="true"></i></div>
+                <span class="text-[10px] font-bold" data-i18n="tab.send">發送</span>
             </button>
-            <button class="tab-btn flex flex-col items-center gap-1" data-tab="decode" onclick="switchTab('decode')">
-                <div class="tab-icon"><i class="fa-solid fa-ear-listen"></i></div>
-                <span class="text-[10px] font-bold">接收解碼</span>
+            <button type="button" role="tab" id="tab-decode" class="tab-btn flex flex-col items-center gap-1" data-tab="decode" aria-controls="page-decode" aria-selected="false" tabindex="-1" onclick="switchTab('decode')">
+                <div class="tab-icon"><i class="fa-solid fa-ear-listen" aria-hidden="true"></i></div>
+                <span class="text-[10px] font-bold" data-i18n="tab.decode">接收解碼</span>
             </button>
-            <button class="tab-btn flex flex-col items-center gap-1" data-tab="game" onclick="switchTab('game')">
-                <div class="tab-icon"><i class="fa-solid fa-gamepad"></i></div>
-                <span class="text-[10px] font-bold">遊戲</span>
+            <button type="button" role="tab" id="tab-game" class="tab-btn flex flex-col items-center gap-1" data-tab="game" aria-controls="page-game" aria-selected="false" tabindex="-1" onclick="switchTab('game')">
+                <div class="tab-icon"><i class="fa-solid fa-gamepad" aria-hidden="true"></i></div>
+                <span class="text-[10px] font-bold" data-i18n="tab.game">遊戲</span>
             </button>
-            <button class="tab-btn flex flex-col items-center gap-1" data-tab="tools" onclick="switchTab('tools')">
-                <div class="tab-icon"><i class="fa-solid fa-book"></i></div>
-                <span class="text-[10px] font-bold">速查/設定</span>
+            <button type="button" role="tab" id="tab-tools" class="tab-btn flex flex-col items-center gap-1" data-tab="tools" aria-controls="page-tools" aria-selected="false" tabindex="-1" onclick="switchTab('tools')">
+                <div class="tab-icon"><i class="fa-solid fa-book" aria-hidden="true"></i></div>
+                <span class="text-[10px] font-bold" data-i18n="tab.tools">速查/設定</span>
             </button>
-            <button class="tab-btn flex flex-col items-center gap-1" data-tab="info" onclick="switchTab('info')">
-                <div class="tab-icon"><i class="fa-solid fa-circle-question"></i></div>
-                <span class="text-[10px] font-bold">說明/安裝</span>
+            <button type="button" role="tab" id="tab-info" class="tab-btn flex flex-col items-center gap-1" data-tab="info" aria-controls="page-info" aria-selected="false" tabindex="-1" onclick="switchTab('info')">
+                <div class="tab-icon"><i class="fa-solid fa-circle-question" aria-hidden="true"></i></div>
+                <span class="text-[10px] font-bold" data-i18n="tab.info">說明/安裝</span>
             </button>
         </div>
     </nav>
 
-    <!-- Custom Modal -->
-    <div id="customModal" class="fixed inset-0 bg-black/80 z-[10000] hidden items-center justify-center p-6 backdrop-blur-sm">
+    <!-- ============ 更新提示 banner（UP2）============ -->
+    <div id="updateBanner" role="region" aria-label="版本更新" hidden
+         class="fixed left-0 right-0 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] z-[9000] px-3">
+        <div class="max-w-md mx-auto glass-card border border-cyan-700/60 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl">
+            <i class="fa-solid fa-rotate-right text-cyan-400 text-lg" aria-hidden="true"></i>
+            <div class="flex-1 min-w-0">
+                <p class="text-xs font-bold text-white" data-i18n="update.new">有新版本可用</p>
+                <p class="text-[10px] text-slate-400 leading-snug">更新後仍可離線使用，解碼歷史與遊戲進度會保留。</p>
+            </div>
+            <button id="updateNowButton" type="button"
+                    class="bg-cyan-500 hover:bg-cyan-400 text-slate-900 text-xs font-extrabold px-3 py-2 rounded-xl whitespace-nowrap" data-i18n="update.now">立即更新</button>
+            <button id="updateLaterButton" type="button" aria-label="稍後再更新"
+                    class="text-slate-400 hover:text-white w-8 h-8 rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- ============ iOS／Android 安裝教學卡（I3）============ -->
+    <div id="installHelpModal" role="dialog" aria-modal="true" aria-labelledby="installHelpTitle" hidden
+         class="fixed inset-0 bg-black/80 z-[10000] flex items-center justify-center p-6 backdrop-blur-sm">
+        <div class="glass-card p-6 rounded-3xl max-w-sm w-full shadow-2xl border border-slate-700 space-y-4">
+            <div class="flex items-start justify-between gap-3">
+                <h2 id="installHelpTitle" class="text-lg font-extrabold text-white" data-i18n="install.title">加到主畫面（免上架）</h2>
+                <button id="installHelpClose" type="button" aria-label="關閉安裝說明"
+                        class="w-8 h-8 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center">
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+            </div>
+            <p class="text-xs text-[#9fb0d6] leading-relaxed">加主畫面＝全螢幕、離線都開得返，唔使上架、唔使錢。</p>
+            <div class="space-y-3 text-sm text-slate-300">
+                <div>
+                    <p class="font-bold text-blue-400 flex items-center gap-2"><i class="fa-brands fa-apple" aria-hidden="true"></i> iPhone / iPad（必須用 Safari）</p>
+                    <ol class="text-xs text-slate-400 leading-relaxed list-decimal pl-5 mt-1 space-y-1">
+                        <li>用 <b>Safari</b> 開啟本頁</li>
+                        <li>按底部「分享」<i class="fa-solid fa-arrow-up-from-bracket" aria-hidden="true"></i></li>
+                        <li>揀「加入主畫面」，再按「加入」</li>
+                    </ol>
+                </div>
+                <div>
+                    <p class="font-bold text-blue-400 flex items-center gap-2"><i class="fa-brands fa-android" aria-hidden="true"></i> Android（Chrome）</p>
+                    <ol class="text-xs text-slate-400 leading-relaxed list-decimal pl-5 mt-1 space-y-1">
+                        <li>右上角 ⋮ 選單</li>
+                        <li>揀「安裝應用程式」或「加到主畫面」</li>
+                        <li>按「安裝」</li>
+                    </ol>
+                </div>
+            </div>
+            <button id="installHelpOk" type="button" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold" data-i18n="common.gotIt">知道了</button>
+        </div>
+    </div>
+
+    <!-- Custom Modal（alert 替代品；confirm 模式多一個取消掣） -->
+    <div id="customModal" role="dialog" aria-modal="true" aria-labelledby="modalMsg"
+         class="fixed inset-0 bg-black/80 z-[10000] hidden items-center justify-center p-6 backdrop-blur-sm">
         <div class="glass-card p-8 rounded-3xl max-w-xs w-full shadow-2xl text-center border border-slate-700">
-            <div class="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-info text-blue-500 text-2xl"></i></div>
+            <div class="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><i id="modalIcon" class="fa-solid fa-info text-blue-500 text-2xl" aria-hidden="true"></i></div>
             <p id="modalMsg" class="font-bold text-white mb-6"></p>
-            <button onclick="closeModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold transition-all">收到了</button>
+            <div class="flex gap-2">
+                <button id="modalCancelBtn" type="button" onclick="closeModal(false)"
+                        class="hidden flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 py-3 rounded-xl font-bold transition-all" data-i18n="common.cancel">取消</button>
+                <button id="modalOkBtn" type="button" onclick="closeModal(true)"
+                        class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold transition-all" data-i18n="common.ok">收到了</button>
+            </div>
         </div>
     </div>
 
     <script>
+    /* ============================================================
+       雙語介面（讀真理倉 docs/44 L1–L6）
+       原則：一次只顯示一種語言、右上角一個掣、切換顯示「目標語言」、
+             localStorage 記住（key 有 app 前綴）、預設中文、
+             <html lang> 同 data-lang 一齊改。
+       做法：靜態文字用 data-i18n="key"（支援屬性 data-i18n-aria / -ph / -title）；
+             動態文字用 T('key') 或 T('key', {n: 3})。
+       ⚠️ 呢個 app 早於 2026-11-08 存在，屬 docs/44 嘅豁免範圍；本版主動補上，
+          字串量 216 條（低於 L1 嘅 300 條閘）。
+    ============================================================ */
+    const LANG_KEY = 'scout_morse_lang';     // L3：要有 app 前綴
+    let LANG = 'zh';
+
+    const I18N = {
+        en: {
+            // 導覽／分頁
+            'tab.send': 'Send', 'tab.decode': 'Receive', 'tab.game': 'Game',
+            'tab.tools': 'Refs & Settings', 'tab.info': 'Help & Install',
+            'nav.main': 'Main navigation', 'nav.tabs': 'Feature tabs',
+            // 發送頁
+            'send.title': 'Message', 'send.ph': 'e.g. SOS',
+            'send.morsePreview': 'Morse preview', 'send.speed': 'Speed (WPM)',
+            'send.freq': 'Channel (Hz)', 'send.phrase': 'Quick phrases',
+            'send.screen': 'Screen flash', 'send.torch': 'Camera flash (torch)',
+            'send.buzzer': 'Speaker beep', 'send.vibrate': 'Vibration',
+            'send.beacon': 'Loop beacon', 'send.beaconHint': 'Repeats the same signal until you press Stop. In camps or the field, make sure first.',
+            'send.beaconConfirm': 'Turning on the loop beacon makes the app repeat the same signal (flash / beep / vibration) until you press Stop.\n\nPlease be sure before enabling in a camp, competition or the field. Enable it?',
+            'send.gap': 'Repeat interval', 'send.estimate': 'About {s}s per transmission',
+            'send.start': 'Start sending', 'send.stop': 'Stop',
+            'send.countdown': '{n}s to go… (press Stop to cancel)',
+            'send.cancelled': 'Cancelled — nothing was sent',
+            'send.round': 'Round {r} · {i}/{n}', 'send.gapWait': 'Waiting {s}s…',
+            'send.empty': 'Please enter something to send first.',
+            // 接收頁
+            'recv.mode.sound': 'Sound', 'recv.mode.light': 'Light', 'recv.mode.manual': 'Manual key',
+            'recv.start': 'Start receiving', 'recv.stop': 'Stop receiving',
+            'recv.idle': 'Standby', 'recv.listening': 'Listening', 'recv.signal': '● Signal',
+            'recv.keying': 'Keying', 'recv.waitSignal': 'Waiting for signal…',
+            'recv.waitKey': 'Waiting for keying…', 'recv.noSignal': 'No signal yet',
+            'recv.liveMorse': 'Live Morse', 'recv.decoded': 'Decoded text',
+            'recv.level': 'Live signal level', 'recv.peerSpeed': 'Sender speed',
+            'recv.sensitivity': 'Sensitivity', 'recv.auto': 'Auto',
+            'recv.sensHint': 'Left = more sensitive (more false triggers), right = stricter (needs a stronger signal). The auto threshold keeps tracking background noise.',
+            'recv.speedHint': 'Garbled output? The sender speed is usually misjudged: pick a closer speed, or tap “Speed” to re-calibrate instantly (no need to restart).',
+            'recv.tipWrong': 'Garbled? Tap to re-calibrate speed',
+            'recv.wakeOn': 'Keep screen awake while receiving',
+            'recv.copy': 'Copy', 'recv.share': 'Share', 'recv.speed': 'Speed',
+            'recv.clear': 'Clear', 'recv.histenHint': 'Sound decoding: aim at the other phone’s speaker and lock onto the chosen tone. V5 engine: sample-clock timing + dual-threshold hysteresis, so long dashes are not missed.',
+            'recv.lightHint': 'Light decoding: point the rear camera at the flashing source. Press “Start receiving” to request permission.',
+            'recv.manualHint': 'Manual key: press and hold to transmit short or long tones. Short = dot (·), long = dash (−). Decodes live with tone, flash and vibration. Full-screen keying and the space bar are supported.',
+            // 手動／全螢幕
+            'manual.title': 'Manual Morse key', 'manual.fs': 'Full-screen keying',
+            'manual.back': 'Backspace', 'manual.space': 'Space', 'manual.commit': 'Commit',
+            'manual.close': 'Close', 'fs.gauge': 'Standby', 'manual.rhythm': 'Reference: dot ~{d}ms · dash ~{a}ms (boundary {m}ms)',
+            // 歷史
+            'hist.title': 'Decode history', 'hist.clearAll': 'Clear all',
+            'hist.empty': 'No records yet. One is saved automatically after each reception (when you press Stop).',
+            'hist.exportCsv': 'Export CSV', 'hist.exportJson': 'Export JSON',
+            'hist.confirmClear': 'Clear all decode history?', 'hist.cleared': 'All decode history cleared.',
+            'hist.share': 'Share record {n}', 'hist.copy': 'Copy record {n}', 'hist.delete': 'Delete record {n}',
+            'hist.nothing': 'Nothing to export yet.', 'hist.copied': 'Copied: {t}', 'hist.noText': 'Nothing to copy yet',
+            'hist.nothingShare': 'Nothing to share yet', 'hist.copyFailed': 'Copy failed — please select manually',
+            // 遊戲
+            'game.title': 'Morse listening trainer', 'game.desc': 'Listen to a morse character (or watch the lamp) and pick the right one. 8 stages × 3 difficulties, 10 questions each — get 8 right to unlock the next stage.',
+            'game.gear': 'Gear', 'game.tone': 'Tone', 'game.lamp': 'Lamp',
+            'game.diff': 'Difficulty', 'game.easy': 'Easy', 'game.med': 'Medium', 'game.hard': 'Hard',
+            'game.easyHint': '8WPM · shows dots/dashes', 'game.medHint': '12WPM · audio only', 'game.hardHint': '18WPM · audio only',
+            'game.stages': 'Choose stage', 'game.reset': 'Reset progress',
+            'game.resetConfirm': 'Reset all stage progress and scores?', 'game.resetDone': 'All stage progress and scores reset.',
+            'game.start': 'Start stage', 'game.play': 'Start', 'game.timeLeft': 'Time',
+            'game.correct': 'Correct!', 'game.wrong': 'Wrong.', 'game.timeout': 'Time out!',
+            'game.answer': 'The answer was', 'game.score': 'Score', 'game.streak': 'Streak',
+            'game.stageDone': 'Stage {n} complete!', 'game.detail': '{c} / {t} correct · {s} points',
+            'game.unlock': 'Stage {n} “{name}” unlocked!', 'game.need8': 'Get 8+ correct to unlock the next stage — try again!',
+            'game.replay': 'Play again', 'game.next': 'Next stage', 'game.locked': 'Locked',
+            // 工具頁
+            'tools.reference': 'Morse reference', 'tools.referenceHint': 'Tap A–Z or 0–9 to hear it at the selected channel.',
+            'tools.audio': 'Offline audio decoding', 'tools.audioHint': 'Upload a recording containing the chosen tone (wav/mp3/m4a) and decode it offline.',
+            'tools.audioResult': 'File decode result',
+            // 設定
+            'set.title': 'Settings', 'set.theme': 'Theme', 'set.dark': 'Dark', 'set.light': 'Light',
+            'set.font': 'Text size', 'set.normal': 'Normal', 'set.small': 'Small', 'set.large': 'Large',
+            'set.lang': 'Language', 'set.langHint': 'Switches the whole interface; your choice is remembered on this device.',
+            // 說明頁
+            'info.installTitle': 'Install as an app (no store needed)',
+            'info.installBody': 'This page is already a PWA — add it to your home screen and use it as an app. No install, no store, no cost.',
+            'info.android': 'Android (Chrome)', 'info.androidSteps': 'Top-right ⋮ → “Add to Home screen / Install app”. Or tap the “Add to Home screen” button at the top.',
+            'info.ios': 'iPhone / iPad (Safari)', 'info.iosSteps': 'Bottom “Share” → “Add to Home Screen”. Receiving, sound and screen flash all work. The camera flash needs Safari on iOS 17.4+; other iOS browsers (Chrome/Edge/Firefox) are all WebKit and use the same “Share → Add to Home Screen” path.',
+            'info.checkUpdate': 'Check for updates', 'info.version': 'Version {v} · works offline',
+            'info.wakeTitle': 'Keep the screen awake (no lock while receiving)',
+            'info.wakeBody': 'When you start receiving, the app asks the system to keep the screen on so it will not dim or lock mid-decode (a locked screen stops the camera and microphone immediately).',
+            'info.wakeYes': 'Supported', 'info.wakeNo': 'Not supported', 'info.wakeMaybe': 'Limited',
+            'info.wakeNote': 'iOS 18.3 and earlier have a system limitation in “Home Screen” mode (known WebKit issue); the app says so right on the receive page. In that case go to Settings → Display & Brightness → Auto-Lock and choose a longer time (e.g. 5 minutes or Never) — continuous decoding still works.',
+            'info.torchTitle': 'Camera flash (torch) compatibility',
+            'info.torchHint': 'Whether this device supports it is shown automatically under the switch on the Send page. The table below is the general picture:',
+            'torch.ok': '✓ Available on this device',
+            'torch.noSupport': 'Not supported here',
+            'torch.iosOld': 'Not supported (needs iOS 17.4+ Safari)',
+            'torch.none': 'Not supported — use screen flash instead',
+            'torch.needSafari': 'On iOS please open in Safari',
+            'torch.needPerm': 'Camera permission needed to detect',
+            'info.torchNote': 'Requires HTTPS, a rear camera with an LED, and camera permission. If unsupported, use “Screen flash” instead.',
+            'info.changes': "What's new in {v}",
+            'info.notice': 'Before you use it',
+            'info.disclaimer': 'Disclaimer: This app is for Scout training, hobby and assisted communication only. It must not be the sole means of an emergency call. In a real emergency, call 999 (Hong Kong) or your local emergency service immediately, and use radio/telephone and other reliable means.',
+            'info.notice1': 'The camera and microphone require HTTPS (your Vercel URL already is).',
+            'info.notice2': 'Camera flash: most Android Chrome devices, and iPhone Safari (iOS 17.4+); see the compatibility table above.',
+            'info.notice3': 'Sound decoding works best in a quiet place with the phones a moderate distance apart.',
+            'info.notice4': 'Light decoding works best in a dim place with the camera held steady on the flashing light.',
+            // 共用／對話框
+            'lang.switch': '中文',
+            'common.ok': 'OK', 'common.gotIt': 'Got it', 'common.cancel': 'Cancel', 'common.confirm': 'Confirm',
+            'common.close': 'Close', 'common.recalibrated': 'Speed baseline re-calibrated.',
+            'common.cantStart': 'Cannot start: {m}',
+            'common.needHttps': 'Please make sure microphone/camera permission is granted and you are on HTTPS.',
+            'install.entry': 'Add to Home screen', 'install.title': 'Add to Home screen (no store)',
+            'install.pitch': 'Home screen = full screen, opens offline, no store, no cost.',
+            'install.iosStep1': 'Open this page in <b>Safari</b>',
+            'install.iosStep2': 'Tap “Share” at the bottom',
+            'install.iosStep3': 'Choose “Add to Home Screen”, then “Add”',
+            'install.androidStep1': 'Top-right ⋮ menu', 'install.androidStep2': 'Choose “Install app” or “Add to Home screen”', 'install.androidStep3': 'Tap “Install”',
+            'install.close': 'Close install help', 'install.installed': 'Added to your home screen — open it from there and it works offline.',
+            'install.already': 'Already installed — just open it from your home screen.',
+            'update.new': 'A new version is available',
+            'update.body': 'It still works offline after updating; decode history and game progress are kept.',
+            'update.now': 'Update now', 'update.later': 'Update later', 'update.region': 'Version update',
+            'update.checking': 'Checking for updates…', 'update.latest': 'Up to date ({v}).',
+            'update.failed': 'Update check failed — please check your connection and try again.',
+            'update.noSw': 'This browser has no offline cache support; the app still works.',
+            'wl.on': 'Screen stays on while receiving (no auto-dim or lock).',
+            'wl.unsupported': 'This browser does not support keeping the screen on: please lengthen “Auto-Lock” in your system settings.',
+            'wl.ios': 'iOS Home Screen mode (before 18.4) cannot keep the screen on. Go to Settings → Display & Brightness → Auto-Lock.',
+            'wl.rejected': 'The system did not grant it right now (power-saving mode or page in background): the screen may still lock — please lengthen Auto-Lock.',
+            'wl.off': 'Screen-awake turned off: long receptions may be interrupted by the lock screen.',
+            'wl.offShort': 'Screen-awake is off.',
+            'share.received': 'Shared content received and filled into the message box:\n\n{t}\n\nPress “Start sending” when ready.',
+            // 頁尾
+            'footer.ver': 'v{v}',
+        },
+    };
+
+    function T(key, vars){
+        if (LANG === 'zh') return null;             // 中文係原文，直接由 DOM 顯示
+        const dict = I18N[LANG] || {};
+        let out = dict[key];
+        if (out == null) return null;               // 冇譯文 → 保留中文原文（fail-safe，唔會出 key）
+        if (vars) out = out.replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? vars[k] : m));
+        return out;
+    }
+    // i18n 文字：先揀語言，再用同一個 {var} 替換器（中文原文本身也可能含 {n}）
+    function TT(key, zhText, vars){
+        const tpl = (T(key) != null) ? T(key) : zhText;
+        if (!vars) return tpl;
+        return tpl.replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? vars[k] : m));
+    }
+
+    /* ---------- L3：套用語言（屬性好 html lang / data-lang 一齊改）---------- */
+    // 靜態文字節點：第一次見到時記住中文原文，切返中文就還原（唔靠字典，原文零失真）
+    const i18nNodes = new Map();     // el -> {key, zh}
+    function collectI18nNodes(){
+        document.querySelectorAll('[data-i18n]').forEach((el) => {
+            if (i18nNodes.has(el)) return;
+            i18nNodes.set(el, { key: el.dataset.i18n, zh: el.innerHTML });
+        });
+        document.querySelectorAll('[data-i18n-aria]').forEach((el) => {
+            if (i18nNodes.has(el)) return;
+            i18nNodes.set(el, {
+                key: el.dataset.i18nAria, zh: el.getAttribute('aria-label') || '',
+                zhTitle: el.getAttribute('title'), attr: 'aria-label'
+            });
+        });
+        document.querySelectorAll('[data-i18n-ph]').forEach((el) => {
+            if (i18nNodes.has(el)) return;
+            i18nNodes.set(el, { key: el.dataset.i18nPh, zh: el.getAttribute('placeholder') || '', attr: 'placeholder' });
+        });
+    }
+    function applyStaticI18n(){
+        i18nNodes.forEach((rec, el) => {
+            const t = T(rec.key);
+            if (rec.attr === 'aria-label'){
+                el.setAttribute('aria-label', t == null ? rec.zh : t);
+                if (rec.zhTitle != null) el.setAttribute('title', t == null ? rec.zhTitle : t);
+            } else if (rec.attr === 'placeholder'){
+                el.setAttribute('placeholder', t == null ? rec.zh : t);
+            } else {
+                el.innerHTML = t == null ? rec.zh : t;
+            }
+        });
+    }
+
+    function loadLang(){
+        try {
+            const v = localStorage.getItem(LANG_KEY);
+            return v === 'en' ? 'en' : 'zh';       // 壞值／讀唔到一律 fallback 中文（唔好白屏）
+        } catch (e) { return 'zh'; }
+    }
+
+    function applyLang(lang){
+        LANG = lang === 'en' ? 'en' : 'zh';
+        const root = document.documentElement;
+        root.setAttribute('data-lang', LANG);
+        root.setAttribute('lang', LANG === 'en' ? 'en' : 'zh-Hant-HK');
+        try { localStorage.setItem(LANG_KEY, LANG); } catch (e) {}
+        // 掣顯示「目標語言」（L2）—— 實際設定見下面 applyStaticI18n() 之後
+        const btn = document.getElementById('langBtn');
+        if (btn){
+            const next = LANG === 'en' ? '切換至中文介面' : 'Switch to English';
+            btn.setAttribute('aria-label', next);
+            btn.setAttribute('title', next);
+        }
+        collectI18nNodes();
+        applyStaticI18n();
+        // L2：掣要顯示「目標語言」—— 中文模式顯示 EN，英文模式顯示 中文。
+        // 中文原文係 EN，所以英文模式要另外設定（唔可以靠 applyStaticI18n 還原）。
+        if (LANG === 'en'){
+            ['langBtnLabel','langBtnLabel2'].forEach((id) => {
+                const lbl = document.getElementById(id);
+                if (lbl) lbl.innerText = '中文';
+            });
+        }
+        // tab 掣：collectI18nNodes() 已把含子元素的「接收解碼」登記為 zh（innerHTML 含 <i>），
+        // 但英文譯文係純文字 → 圖示會消失。所以分頁文字要由 JS 直接管，逐個 key 設。
+        const TAB_KEYS = { send:'tab.send', decode:'tab.decode', game:'tab.game', tools:'tab.tools', info:'tab.info' };
+        Object.entries(TAB_KEYS).forEach(([name, key]) => {
+            const el = document.querySelector('#tab-' + name + ' span.text-\\[10px\\]');
+            if (el){
+                if (!el.dataset.zh) el.dataset.zh = el.textContent;
+                el.textContent = TT(key, el.dataset.zh);
+            }
+        });
+        // 動態內容要重新繪製（唔重新繪製就會殘留舊語言）
+        try { if (typeof renderHistory === 'function') renderHistory(); } catch (e) {}
+        try { if (typeof setListeningUI === 'function') setListeningUI(listening); } catch (e) {}
+        try { if (typeof renderStageGrid === 'function') renderStageGrid(); } catch (e) {}
+        try { if (typeof updateEstimate === 'function') updateEstimate(); } catch (e) {}
+        try { if (typeof updateManualRhythmGuide === 'function') updateManualRhythmGuide(); } catch (e) {}
+        try { if (typeof applyTheme === 'function') applyTheme(loadPref().theme || 'dark'); } catch (e) {}
+        try { if (typeof buildRef === 'function') buildRef(); } catch (e) {}
+        try { if (typeof reapplyTorchStatus === 'function') reapplyTorchStatus(); } catch (e) {}
+        try {
+            const st = document.getElementById('swStatusLabel');
+            if (st && window.__swReady) st.innerText = TT('info.version', '離線已就緒').replace('{v}', APP_VERSION).split(' · ')[0];
+        } catch (e) {}
+    }
+
+    function toggleLang(){ applyLang(LANG === 'en' ? 'zh' : 'en'); }
+
     /* ============================================================
        共用：摩斯對照表 + 反查表
     ============================================================ */
@@ -794,20 +1220,68 @@
     /* ============================================================
        Tab 切換
     ============================================================ */
-    function switchTab(name) {
+    const TAB_NAMES = ['send', 'decode', 'game', 'tools', 'info'];
+    function switchTab(name, opts) {
+        if (!TAB_NAMES.includes(name)) name = 'send';
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById('page-' + name).classList.add('active');
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-        // 離開解碼頁就停止接收；離開遊戲頁就中止本局
-        if (name !== 'decode' && listening) toggleListen();
-        if (name !== 'game' && typeof game !== 'undefined' &&
-            (!document.getElementById('gamePlayBox').classList.contains('hidden') ||
-             !document.getElementById('gameResultBox').classList.contains('hidden'))) abortGame();
-        window.scrollTo({top:0, behavior:'smooth'});
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            const on = b.dataset.tab === name;
+            b.classList.toggle('active', on);
+            // I6：讀屏要知邊個分頁揀咗；鍵盤用 roving tabindex（只有當前分頁 Tab 得到）
+            b.setAttribute('aria-selected', on ? 'true' : 'false');
+            b.setAttribute('tabindex', on ? '0' : '-1');
+        });
+        // 網址記住分頁：由主畫面／分享連結開返同一個分頁，reload 後亦唔會跳走
+        if (!(opts && opts.silent)) {
+            try {
+                const url = new URL(location.href);
+                if (name === 'send') url.hash = '';
+                else url.hash = name;
+                history.replaceState(null, '', url);
+            } catch (e) {}
+        }
+        // 只喺用戶主動切換時移動焦點；開頁 deep-link 唔好搶焦點（否則讀屏一開聲就讀分頁）
+        if (!(opts && opts.silent)) {
+            try { document.getElementById('tab-' + name)?.focus({ preventScroll: true }); } catch (e) {}
+        }
+        // 離開解碼頁就停止接收；離開遊戲頁就中止本局（silent＝初始化，未有 listener，唔會誤觸）
+        if (!(opts && opts.silent)) {
+            if (name !== 'decode' && listening) toggleListen();
+            if (name !== 'game' && typeof game !== 'undefined' &&
+                (!document.getElementById('gamePlayBox').classList.contains('hidden') ||
+                 !document.getElementById('gameResultBox').classList.contains('hidden'))) abortGame();
+        }
+        try { window.scrollTo({top:0, behavior: (opts && opts.silent) ? 'auto' : 'smooth'}); } catch (e) {}
     }
 
-    function customAlert(msg){ document.getElementById('modalMsg').innerText = msg; document.getElementById('customModal').style.display='flex'; }
-    function closeModal(){ document.getElementById('customModal').style.display='none'; }
+    /* 自己嘅對話框（I8：唔准用 alert / confirm / prompt）
+       customAlert(msg)              → 一個「收到了」掣
+       customConfirm(msg, cb)        → 「取消 / 確定」，結果傳去 callback */
+    let modalResolve = null;
+    function customAlert(msg){
+        const m = document.getElementById('customModal');
+        document.getElementById('modalMsg').innerText = msg;
+        document.getElementById('modalCancelBtn').classList.add('hidden');
+        document.getElementById('modalOkBtn').innerText = TT('common.ok', '收到了');
+        m.classList.remove('hidden'); m.style.display = 'flex';
+        document.getElementById('modalOkBtn').focus();
+    }
+    function customConfirm(msg, onOk){
+        const m = document.getElementById('customModal');
+        document.getElementById('modalMsg').innerText = msg;
+        document.getElementById('modalCancelBtn').classList.remove('hidden');
+        document.getElementById('modalOkBtn').innerText = TT('common.confirm', '確定');
+        modalResolve = onOk || null;
+        m.classList.remove('hidden'); m.style.display = 'flex';
+        document.getElementById('modalCancelBtn').focus();
+    }
+    function closeModal(ok){
+        const m = document.getElementById('customModal');
+        m.classList.add('hidden'); m.style.display = 'none';
+        const cb = modalResolve; modalResolve = null;
+        if (ok && typeof cb === 'function') cb();
+    }
 
     /* ============================================================
        發送 (保留原功能)
@@ -863,7 +1337,7 @@
             });
             if (wi < words.length-1) total += unitMs*7;
         });
-        el.innerText = '單次發送約 ' + (total/1000).toFixed(1) + ' 秒';
+        el.innerText = TT('send.estimate', '單次發送約 {s} 秒', {s: (total/1000).toFixed(1)});
     }
     async function initTorch(){
         if (!document.getElementById('torchOn').checked) return null;
@@ -873,7 +1347,15 @@
             const caps = track.getCapabilities ? track.getCapabilities() : {};
             if (!caps.torch) { customAlert('您的瀏覽器不支援實體閃光燈控制，請改用螢幕閃光。'); stream.getTracks().forEach(t=>t.stop()); return null; }
             return track;
-        } catch(e){ customAlert('無法取得相機權限（閃光燈需要相機權限）。'); return null; }
+        } catch(e){
+            // 取唔到權限／無相機 = 降級（唔擋發送）：本次只用螢幕閃光，唔再彈窗
+            console.warn('torch 不可用，已改用螢幕閃光', e && e.name);
+            const tEl = document.getElementById('torchOn');
+            if (tEl) tEl.checked = false;
+            const sEl = document.getElementById('torchStatus');
+            if (sEl) sEl.innerText = '未取得相機權限，本次改用螢幕閃光';
+            return null;
+        }
     }
     async function setTorch(state, track){ if (track) try { await track.applyConstraints({ advanced:[{ torch: state }] }); } catch(e){} }
 
@@ -891,8 +1373,78 @@
         osc.start(); osc.stop(audioCtx.currentTime + (duration/1000));
         return new Promise(r => setTimeout(r, duration));
     }
+    /* Beacon 開關防呆（F9）：唔准「一撥就無限播」
+       做法：復選框先彈自家確認框；取消 → 撥返原位；確定 → 記住「本次 session 已確認」，
+       之後再開唔會重複問（免得操作煩）。 */
+    let loopConfirmed = false;
+    function onLoopToggle(el){
+        const box = document.getElementById('loopGapBox');
+        if (!el.checked){
+            if (box) box.style.display = 'none';
+            return;
+        }
+        if (loopConfirmed){
+            if (box) box.style.display = 'flex';
+            return;
+        }
+        el.checked = false;                      // 先復原，等用戶答
+        customConfirm(
+            '開啟「循環發送」後，App 會一直重複播送同一段訊號（閃燈／蜂鳴／震動），直到你按「停止」。\n\n'
+            + '喺集會、比賽或野外請確認清楚先開。確定要開嗎？',
+            () => {
+                loopConfirmed = true;
+                el.checked = true;
+                const b = document.getElementById('loopGapBox');
+                if (b) b.style.display = 'flex';
+            }
+        );
+    }
+
+    /* F9 危險動作三步：發送前 3 秒倒數，倒數中可即時取消。
+       理由：發送會着閃光燈／響蜂鳴／震動，喺集會或野外誤按一次 SOS 代價高；
+       而且循環 Beacon 會一直播。倒數期唔開燈、唔響、唔震，取消＝零副作用。 */
+    let countdownTimer = null, countdownResolve = null, countingDown = false;
+    function endCountdown(go){
+        if (countdownTimer){ clearInterval(countdownTimer); countdownTimer = null; }
+        countingDown = false;
+        const r = countdownResolve; countdownResolve = null;
+        if (r) r(go);                       // 只解一次，避免 stop 同 tick 同時 resolve
+    }
+    function cancelCountdown(){
+        if (!countingDown) return;
+        stopFlag = true;
+        endCountdown(false);
+        progressText.innerText = TT('send.cancelled', '已取消發送，未發出任何訊號');
+        setTimeout(() => { if (!isTransmitting) progressBox.classList.add('hidden'); }, 1500);
+        updateUIState(false);
+    }
+    function startCountdown(){
+        return new Promise((resolve) => {
+            let n = 3;
+            countingDown = true; stopFlag = false;
+            countdownResolve = resolve;
+            progressBox.classList.remove('hidden');
+            startBtn.disabled = true; startBtn.classList.add('opacity-50');
+            stopBtn.disabled = false; stopBtn.classList.remove('opacity-50');
+            const tick = () => {
+                if (n > 0){
+                    progressText.innerText = TT('send.countdown', '倒數 {n} 秒…（按「停止」即刻取消）', {n: n});
+                    n--;
+                } else {
+                    endCountdown(true);
+                }
+            };
+            tick();                         // 即刻顯示「倒數 3 秒」
+            countdownTimer = setInterval(tick, 1000);
+        });
+    }
     async function transmit(){
-        const msg = messageInput.value.trim(); if (!msg) return;
+        if (countingDown || isTransmitting) return;
+        const msg = messageInput.value.trim();
+        if (!msg){ customAlert(TT('send.empty', '請先輸入要發送的內容。')); return; }
+        // 先倒數（唔碰硬件），確認後才開閃光燈／蜂鳴
+        const go = await startCountdown();
+        if (!go) return;
         videoTrack = await initTorch();
         const words = msg.toUpperCase().split(/\s+/), events = [];
         words.forEach((word, wi) => {
@@ -912,7 +1464,7 @@
         let round = 0;
         while (!stopFlag){
             if (round > 0){
-                progressText.innerText = '間隔 ' + (loopGap/1000) + ' 秒…';
+                progressText.innerText = TT('send.gapWait', '間隔 {s} 秒…', {s: loopGap/1000});
                 await new Promise(r => setTimeout(r, loopGap));
                 if (stopFlag) break;
             }
@@ -920,7 +1472,9 @@
             for (let i=0; i<events.length; i++){
                 if (stopFlag) break;
                 const e = events[i];
-                progressText.innerText = (loopOn ? '第 ' + round + ' 次 · ' : '') + (i+1) + '/' + events.length;
+                progressText.innerText = loopOn
+                        ? TT('send.round', '第 {r} 次 · {i}/{n}', {r: round, i: i+1, n: events.length})
+                        : (i+1) + '/' + events.length;
                 if (e.type === 'on'){
                     if (document.getElementById('screenOn').checked) flashOverlay.style.display = 'block';
                     if (videoTrack) setTorch(true, videoTrack);
@@ -938,7 +1492,9 @@
         stopTransmission();
     }
     function stopTransmission(){
-        stopFlag = true; isTransmitting = false; flashOverlay.style.display = 'none';
+        if (countingDown){ cancelCountdown(); return; }   // 倒數期撳「停止」＝取消，唔會殘留 promise
+        stopFlag = true; isTransmitting = false;
+        flashOverlay.style.display = 'none';
         if (videoTrack){ setTorch(false, videoTrack); videoTrack.stop(); videoTrack = null; }
         updateUIState(false);
     }
@@ -982,6 +1538,7 @@
     let letterOns = [];            // 目前正在組的字母、各音段的原始長度（unit 校正後可重判）
     let recvWPM = 0;               // 0 = 自動（以本機發送 WPM 為種子）
     let sensValue = 50;
+    let unitHint = 0;              // 最近空隙短群估到嘅 1u（0 = 未夠證據）
     // 自適應雙門檻（磁滯）
     let noiseFloor = 0, peak = 0.15, thrOn = 0.1, thrOff = 0.06;
     const DecUI = { level(){}, state(){}, morse(){}, text(){}, wpm(){} };
@@ -1010,7 +1567,7 @@
         threshDisp.innerText = ton.toFixed(2) + '/' + toff.toFixed(2);
     };
     DecUI.state = (on) => {
-        signalState.innerText = on ? '● 訊號' : (decodeMode === 'manual' ? '拍發中' : '聆聽中');
+        signalState.innerText = on ? TT('recv.signal', '● 訊號') : (decodeMode === 'manual' ? TT('recv.keying', '拍發中') : TT('recv.listening', '聆聽中'));
         signalState.classList.toggle('text-cyan-400', on);
         signalState.classList.toggle('text-green-400', !on);
     };
@@ -1020,7 +1577,9 @@
         if (fs) fs.innerText = s || '—';
     };
     DecUI.text  = (t) => {
-        const fallback = listening ? (decodeMode === 'manual' ? '等待拍發…' : '聆聽中…') : '等待訊號…';
+        const fallback = listening
+            ? (decodeMode === 'manual' ? TT('recv.waitKey', '等待拍發…') : TT('recv.listening', '聆聽中…'))
+            : TT('recv.waitSignal', '等待訊號…');
         decodedText.innerText = t.trim() || fallback;
         const fs = document.getElementById('fsDecodedText');
         if (fs) fs.innerText = t.trim() || fallback;
@@ -1060,19 +1619,21 @@
 
     function clearDecode(){
         currentSymbols = ''; decodedOut = '';
-        const fallback = listening ? (decodeMode === 'manual' ? '等待拍發…' : '聆聽中…') : '等待訊號…';
+        const fallback = listening
+            ? (decodeMode === 'manual' ? TT('recv.waitKey', '等待拍發…') : TT('recv.listening', '聆聽中…'))
+            : TT('recv.waitSignal', '等待訊號…');
         liveMorse.innerText = '—'; decodedText.innerText = fallback;
         updateFsOutput();
     }
 
     function copyDecoded(){
         const t = decodedOut.trim();
-        if (!t){ customAlert('目前沒有可複製的文字'); return; }
-        navigator.clipboard?.writeText(t).then(()=>customAlert('已複製：' + t)).catch(()=>customAlert('複製失敗，請手動選取'));
+        if (!t){ customAlert(TT('hist.noText', '目前沒有可複製的文字')); return; }
+        navigator.clipboard?.writeText(t).then(()=>customAlert(TT('hist.copied', '已複製：{t}', {t: t}))).catch(()=>customAlert(TT('hist.copyFailed', '複製失敗，請手動選取')));
     }
     function shareDecoded(){
         const t = decodedOut.trim();
-        if (!t){ customAlert('目前沒有可分享的文字'); return; }
+        if (!t){ customAlert(TT('hist.nothingShare', '目前沒有可分享的文字')); return; }
         if (navigator.share){ navigator.share({ title:'Scout Morse 解碼結果', text:t }).catch(()=>{}); }
         else copyDecoded();
     }
@@ -1101,19 +1662,134 @@
 
     function setListeningUI(on){
         listening = on;
+        // 接收期間要保持螢幕常亮；停止接收（或用戶切走）即刻釋放，唔好偷偷食電
+        wakeLockWanted = on;
+        if (on) acquireWakeLock(); else releaseWakeLock();
         listenBtn.classList.toggle('listening', on);
         listenBtn.innerHTML = on
-            ? '<i class="fa-solid fa-stop"></i> 停止接收'
-            : '<i class="fa-solid fa-ear-listen"></i> 開始接收';
+            ? '<i class="fa-solid fa-stop" aria-hidden="true"></i> ' + TT('recv.stop', '停止接收')
+            : '<i class="fa-solid fa-ear-listen" aria-hidden="true"></i> ' + TT('recv.start', '開始接收');
         listenBtn.classList.toggle('bg-green-600', !on);
         listenBtn.classList.toggle('hover:bg-green-700', !on);
         listenBtn.classList.toggle('bg-red-600', on);
         listenBtn.classList.toggle('hover:bg-red-700', on);
-        signalState.innerText = on ? '聆聽中' : '待機';
+        signalState.innerText = on ? TT('recv.listening', '聆聽中') : TT('recv.idle', '待機');
         signalState.classList.toggle('text-green-400', on);
         signalState.classList.toggle('text-slate-400', !on);
-        if (on){ decodedText.innerText = decodedOut.trim() || '聆聽中…'; }
+        if (on){ decodedText.innerText = decodedOut.trim() || TT('recv.listening', '聆聽中…'); }
     }
+
+    /* ============================================================
+       螢幕常亮（Screen Wake Lock API）
+       為甚麼需要：光源解碼要手機擺定對住對方閃光、聲音解碼要長時間「聆聽」，
+       期間用戶唔會掂螢幕 → 系統十幾秒就變暗再鎖屏 → 相機／收音被切斷，解到一半斷。
+       規則（F4 fail-open）：取唔到鎖唔可以阻住解碼，一律靜靜降級。
+       ⚠️ iOS 16.4–18.3：Safari 分頁有效，但「加到主畫面」嘅 PWA 無效（WebKit 254545），
+          18.4 才修好 → 所以仍要提示用戶手動調高自動鎖屏時間，唔可以只靠呢個。
+    ============================================================ */
+    let wakeLockSentinel = null;
+    let wakeLockWanted = false;      // 用戶「想」要保持常亮（接收中）
+    let wakeLockSupported = null;    // null = 未測
+    let wakeLockEnabled = true;      // 用戶偏好（可在說明頁關閉）
+
+    const isIosDevice = () => /iphone|ipad|ipod/i.test(navigator.userAgent || '')
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    // iOS 主畫面模式（standalone）＋ 版本 < 18.4 → 官方 API 無效，要老實講
+    const iosStandaloneMayFail = () => {
+        if (!isIosDevice() || !isStandalone()) return false;
+        const m = (navigator.userAgent || '').match(/OS (\d+)[._](\d+)/);
+        if (!m) return true;                      // 讀唔到版本：當佢可能失效（保守）
+        const major = +m[1], minor = +m[2];
+        return major < 18 || (major === 18 && minor < 4);
+    };
+
+    function setWakeLockStatus(kind, msg){
+        const el = document.getElementById('wakeLockStatus');
+        if (!el) return;
+        const styles = {
+            on:   'border-emerald-600/50 bg-emerald-500/10 text-emerald-300',
+            warn: 'border-amber-500/40 bg-amber-500/10 text-amber-200',
+            off:  'border-slate-700 bg-slate-800/40 text-slate-400',
+        };
+        el.className = 'text-[10px] leading-relaxed rounded-lg px-2.5 py-2 border ' + (styles[kind] || styles.off);
+        el.innerHTML = '<i class="fa-solid fa-' + (kind === 'on' ? 'sun' : kind === 'warn' ? 'triangle-exclamation' : 'circle-info')
+            + ' mr-1" aria-hidden="true"></i>' + msg;
+    }
+
+    async function acquireWakeLock(){
+        if (!wakeLockWanted || !wakeLockEnabled) return false;
+        // 已經持有（或瀏覽器幫我釋放咗 → sentinel.released 為 true）
+        if (wakeLockSentinel && !wakeLockSentinel.released) return true;
+
+        if (!('wakeLock' in navigator)){
+            wakeLockSupported = false;
+            setWakeLockStatus('warn',
+                '此瀏覽器唔支援螢幕常亮：請到系統設定把「自動鎖定」時間調長（例如 5 分鐘或永不）。');
+            return false;
+        }
+        wakeLockSupported = true;
+
+        if (iosStandaloneMayFail()){
+            // 早啲講清楚，唔好扮成功
+            setWakeLockStatus('warn',
+                'iOS 主畫面模式（18.4 之前）唔支援螢幕常亮。請到「設定 → 螢幕與亮度 → 自動鎖定」調長。');
+            return false;
+        }
+        try {
+            wakeLockSentinel = await navigator.wakeLock.request('screen');
+            wakeLockSentinel.addEventListener('release', () => {
+                wakeLockSentinel = null;
+                // 被系統釋放（多數係切咗背景）：唔好報錯，等回前景再取
+                if (wakeLockWanted && document.visibilityState === 'visible') acquireWakeLock();
+                else if (!wakeLockWanted) setWakeLockStatus('off', '螢幕常亮已關閉。');
+            });
+            setWakeLockStatus('on', '接收期間螢幕保持開啟（唔會自動變暗或鎖屏）。');
+            return true;
+        } catch (err) {
+            // NotAllowedError（頁面不可見／省電模式）／NotSupportedError 等：靜靜降級
+            wakeLockSentinel = null;
+            const why = (err && err.name === 'NotAllowedError')
+                ? '系統暫時唔批准（可能處於省電模式或頁面在背景）'
+                : '瀏覽器拒絕';
+            setWakeLockStatus('warn',
+                why + '：螢幕仍可能自動鎖屏，請把系統「自動鎖定」時間調長。');
+            return false;
+        }
+    }
+
+    function setWakeLockEnabled(on){
+        wakeLockEnabled = !!on;
+        const p = loadPref(); p.wakeOn = wakeLockEnabled; savePref(p);
+        const cb = document.getElementById('wakeOn');
+        if (cb) cb.checked = wakeLockEnabled;
+        if (!wakeLockEnabled){
+            releaseWakeLock();
+            setWakeLockStatus('off', '已關閉螢幕常亮：長時接收可能被系統鎖屏中斷。');
+        } else if (wakeLockWanted){
+            acquireWakeLock();
+        } else {
+            const el = document.getElementById('wakeLockStatus');
+            if (el) el.classList.add('hidden');
+        }
+    }
+
+    async function releaseWakeLock(){
+        wakeLockWanted = false;
+        const sentinel = wakeLockSentinel;
+        wakeLockSentinel = null;
+        if (sentinel && !sentinel.released){
+            try { await sentinel.release(); } catch (e) {}
+        }
+        const el = document.getElementById('wakeLockStatus');
+        if (el) el.classList.add('hidden');
+    }
+
+    // 瀏覽器一定會喺頁面隱藏時自動釋放 → 回前景要主動重取（真機最常見嘅漏鎖原因）
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && wakeLockWanted && !wakeLockSentinel){
+            acquireWakeLock();
+        }
+    });
 
     /* ---------- 聲音解碼（Goertzel 單頻鎖定 + 取樣時鐘計時）----------
        只計算目標頻率的能量（單頻 DFT），再用「佔寬頻總能量比例」當訊號強度。
@@ -1502,6 +2178,7 @@
         onHist = [];
         offHist = [];
         letterOns = [];
+        unitHint = 0;
         noiseFloor = 0; peak = 0.15; thrOn = 0.1; thrOff = 0.06;
         reseedTiming();
         DecUI.morse('');
@@ -1517,6 +2194,7 @@
         onHist = [];
         offHist = [];
         letterOns = [];
+        unitHint = 0;
         DecUI.wpm(Math.round(1200 / dotAvg));
     }
 
@@ -1566,25 +2244,33 @@
     function handleSegment(wasOn, dur){
         if (wasOn){
             if (dur < 15) return;   // 過短毛刺忽略
-            const mid = (dotAvg + dashAvg) / 2;   // 點/劃分界 = 兩群中點
+            // 點/劃分界：以「統一 unit（on 群 dotAvg 同空隙短群 unitHint 調和）」× 2 為界，
+            // 因為 1u=點、3u=劃，分界就係 2u。只靠 dotAvg 嘅話，空隙證據完全用唔到。
+            const uSym = unitHint > 0 ? (dotAvg + unitHint) / 2 : dotAvg;
+            const mid = uSym * 2;
             let sym;
             if (dur < mid){ sym = '.'; dotAvg = dotAvg*0.65 + dur*0.35; }
             else          { sym = '-'; dashAvg = dashAvg*0.75 + dur*0.25; }
             // 夾住不漂移：dot ∈ [25,600]ms，dash/dot 比例 ∈ [1.8, 5]
             dotAvg = Math.min(Math.max(dotAvg, 25), 600);
             dashAvg = Math.min(Math.max(dashAvg, dotAvg*1.8), dotAvg*5);
-            onHist.push(dur);  if (onHist.length > 40) onHist.shift();
+            onHist.push(dur);  while (onHist.length > 6) onHist.shift();   // 滑動窗：早期壞種子唔會永遠污染分群
             letterOns.push(dur);
             currentSymbols += sym;
             // 早期(4/6 個)就整批校正一次，之後每 8 個校正；
             // 若 unit 明顯改變，reestimate 會用 letterOns 重建整串（含本音段），不會重複
-            if (onHist.length === 4 || onHist.length === 6 || onHist.length % 8 === 0) reestimateTiming();
+            if (onHist.length <= 6 || onHist.length % 4 === 0) reestimateTiming();
             DecUI.morse(currentSymbols);
             DecUI.wpm(Math.round(1200 / dotAvg));
             flushedThisSilence = false;
         } else {
-            if (dur >= 15){ offHist.push(dur); if (offHist.length > 40) offHist.shift(); }
-            const u = dotAvg;
+            // 只收「有意義」嘅空隙：開頭／結尾嘅 12–16ms 引導空隙係雜訊（任何真實速度下
+            // 1u 都 ≥ 20ms；30 WPM 已經係 40ms），收咗入 histogram 會令 unit 嚴重低估。
+            if (dur >= 25){ offHist.push(dur); while (offHist.length > 8) offHist.shift(); }
+            // 先用「新證據」校正 unit 才判斷分隔。
+            // 舊版喺呢度用舊 dotAvg → 種子估錯時，字母邊界用錯單位判，成串黏埋（SOS 變 ?）。
+            reestimateTiming();
+            const u = (unitHint > 0 && dur > 12) ? (dotAvg + Math.min(Math.max(unitHint, 20), 600)) / 2 : dotAvg;
             if (dur >= u*2.2){ flushLetter(); }    // >2.2u：字母間隔（標準 3u）
             if (dur >= u*5.5){ flushWord(); }      // >5.5u：單字間隔（標準 7u）
         }
@@ -1601,7 +2287,9 @@
         return { lo: avg(s.slice(0,bi)), hi: avg(s.slice(bi)) };
     }
     function reestimateTiming(){
-        if (onHist.length < 4) return;
+        // 舊版要 onHist ≥ 4 才估 —— 但頭兩三個字母正正最需要校正：
+        // 「空隙」係發射機控制、機器碼級精準（字母內 = 1u），有 3 個空隙就夠分群。
+        if (onHist.length < 4 && offHist.length < 3) return;
         const oldDot = dotAvg;
         const ons  = splitTwoClusters(onHist);
         const offs = splitTwoClusters(offHist);
@@ -1625,6 +2313,12 @@
         }
         dotAvg = Math.min(Math.max(dotAvg, 25), 600);
         dashAvg = Math.min(Math.max(dashAvg, dotAvg*1.8), dotAvg*5);
+        // 用最近空隙嘅「短群」做 unit 提示（字母內空隙 = 1u，係最乾淨嘅證據）。
+        //    只取最近 8 個，而且要「兩群分得開」先用，避免雜訊污染。
+        const recentOffs = offHist.slice(-8);
+        const oc = splitTwoClusters(recentOffs);
+        unitHint = (oc && oc.lo > 10 && oc.lo < 600) ? oc.lo : 0;   // 分唔開群就唔用（避免污染）
+
         // unit 明顯改變 → 用新 unit 重判「目前這個字母」已累積的音段（補救種子不準）
         if (letterOns.length && Math.abs(dotAvg - oldDot)/oldDot > 0.2){
             const mid = (dotAvg + dashAvg) / 2;
@@ -1684,7 +2378,7 @@
         camTrackRef = null;
         levelBar.style.width = '0%';
         setListeningUI(false);
-        signalState.innerText = '待機';
+        signalState.innerText = TT('recv.idle', '待機');
     }
 
     /* ============================================================
@@ -1793,9 +2487,11 @@
         renderStageGrid();
     }
     function resetGameProgress(){
-        if (!confirm('確定要重置所有關卡進度與成績嗎？')) return;
-        saveGameSave({ unlocked:1, best:{} });
-        abortGame();
+        customConfirm(TT('game.resetConfirm', '確定要重置所有關卡進度與成績嗎？'), () => {
+            saveGameSave({ unlocked:1, best:{} });
+            abortGame();
+            customAlert(TT('game.resetDone', '已重置所有關卡進度與成績。'));
+        });
     }
 
     // 抽題目（困難模式從已解鎖的所有字元混抽）
@@ -1931,11 +2627,11 @@
                 bonus += Math.max(0, Math.round((game.timerEnd - performance.now()) / 100));
             }
             game.score += base + bonus;
-            fb.innerHTML = '<span class="text-green-400"><i class="fa-solid fa-check mr-1"></i>正確！' + game.current + ' = ' + displayMorse(game.current) + '（+' + (base + bonus) + '）</span>';
+            fb.innerHTML = '<span class="text-green-400"><i class="fa-solid fa-check mr-1" aria-hidden="true"></i>正確！' + escHtml(game.current + ' = ' + displayMorse(game.current) + '（+' + (base + bonus) + '）') + '</span>';
             sfx(true);
         } else {
             game.streak = 0;
-            fb.innerHTML = '<span class="text-red-400"><i class="fa-solid fa-xmark mr-1"></i>' + (ch === null ? '超時！' : '答錯了。') + '正解是 ' + game.current + ' = ' + displayMorse(game.current) + '</span>';
+            fb.innerHTML = '<span class="text-red-400"><i class="fa-solid fa-xmark mr-1" aria-hidden="true"></i>' + (ch === null ? '超時！' : '答錯了。') + escHtml(' 正解是 ' + game.current + ' = ' + displayMorse(game.current)) + '</span>';
             sfx(false);
         }
         document.getElementById('gameStreak').innerText = game.streak;
@@ -1988,25 +2684,184 @@
     function replayStage(){ startStage(game.stage); }
 
     /* ============================================================
-       PWA：Service Worker 註冊 + 安裝提示
+       PWA：安裝入口（I1–I8）+ 版本更新（UP1–UP5）
+       一句原則：「安裝要有掣、更新要問過人」
     ============================================================ */
-    if ('serviceWorker' in navigator){
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js').catch(e => console.log('SW 註冊失敗', e));
+    const APP_VERSION = 'v5.4.0';
+
+    // 防禦式：舊 WebView 冇 matchMedia 時唔應該拋錯（會令後面成個初始化腳本停擺）
+    const isStandalone = () => {
+        try {
+            if (typeof window.matchMedia === 'function' &&
+                window.matchMedia('(display-mode: standalone)').matches) return true;
+        } catch (e) {}
+        return window.navigator.standalone === true;
+    };
+    const isIos = () =>
+        /iphone|ipad|ipod/i.test(navigator.userAgent || '') ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);  // iPadOS 13+ 扮 Mac
+
+    const installBtn = document.getElementById('installBtn');
+    const installHelpModal = document.getElementById('installHelpModal');
+    let deferredPrompt = null;
+
+    function showInstallEntry(){
+        if (isStandalone() || !installBtn) return;   // 已經係 App 就唔再顯示
+        installBtn.classList.remove('hidden');
+    }
+    function hideInstallEntry(){ if (installBtn) installBtn.classList.add('hidden'); }
+    function openInstallHelp(){
+        if (!installHelpModal) return;
+        installHelpModal.hidden = false;
+        document.getElementById('installHelpOk')?.focus();
+    }
+    function closeInstallHelp(){
+        if (!installHelpModal) return;
+        installHelpModal.hidden = true;
+        installBtn?.focus();
+    }
+    if (installHelpModal){
+        document.getElementById('installHelpClose')?.addEventListener('click', closeInstallHelp);
+        document.getElementById('installHelpOk')?.addEventListener('click', closeInstallHelp);
+        installHelpModal.addEventListener('click', (e) => { if (e.target === installHelpModal) closeInstallHelp(); });
+    }
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if (installHelpModal && !installHelpModal.hidden) { closeInstallHelp(); return; }
+        const cm = document.getElementById('customModal');
+        if (cm && !cm.classList.contains('hidden')) closeModal(false);
+    });
+
+    // I2：Android／Chrome 攔住系統自彈，等用戶自己撳
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        showInstallEntry();
+    });
+    window.addEventListener('appinstalled', () => {
+        deferredPrompt = null;
+        hideInstallEntry();
+        customAlert(TT('install.installed', '已加入主畫面，之後由主畫面開啟即可離線使用。'));
+    });
+    if (installBtn){
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt){
+                deferredPrompt.prompt();
+                try { await deferredPrompt.userChoice; } catch(e){}
+                deferredPrompt = null;
+                hideInstallEntry();
+                return;
+            }
+            openInstallHelp();      // I3：iOS 冇 beforeinstallprompt，一律出教學卡
         });
     }
-    let deferredPrompt = null;
-    const installBtn = document.getElementById('installBtn');
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault(); deferredPrompt = e; installBtn.classList.remove('hidden');
-    });
-    installBtn.addEventListener('click', async () => {
-        if (!deferredPrompt) return;
-        deferredPrompt.prompt();
-        await deferredPrompt.userChoice;
-        deferredPrompt = null; installBtn.classList.add('hidden');
-    });
-    window.addEventListener('appinstalled', () => installBtn.classList.add('hidden'));
+    // iOS／桌面等情況：頁面載入後提供入口（唔自動彈窗）
+    if (isStandalone()) hideInstallEntry(); else setTimeout(showInstallEntry, 1200);
+
+    /* ---------- 更新流程（UP1–UP5）---------- */
+    const updateBanner = document.getElementById('updateBanner');
+    const updateNowButton = document.getElementById('updateNowButton');
+    const updateLaterButton = document.getElementById('updateLaterButton');
+    let waitingWorker = null;
+    let dismissedWorker = null;
+    let updateReloading = false;
+
+    function showUpdateBanner(worker){
+        if (!updateBanner || !worker) return;
+        if (worker === dismissedWorker) return;      // UP2：同一個 worker 唔再嘈
+        waitingWorker = worker;
+        updateBanner.hidden = false;
+    }
+    function hideUpdateBanner(){ if (updateBanner) updateBanner.hidden = true; }
+
+    if (updateNowButton){
+        updateNowButton.addEventListener('click', () => {
+            if (!waitingWorker) { location.reload(); return; }
+            updateReloading = true;
+            waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+            // UP3：2.5 秒 fallback，SW 冇反應都要入到新版
+            setTimeout(() => { if (updateReloading) location.reload(); }, 2500);
+        });
+    }
+    if (updateLaterButton){
+        updateLaterButton.addEventListener('click', () => {
+            dismissedWorker = waitingWorker;         // UP2：記住呢個 worker，唔再彈
+            hideUpdateBanner();
+        });
+    }
+
+    if ('serviceWorker' in navigator){
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!updateReloading) return;            // 首次安裝 clients.claim() 唔應該 reload
+            updateReloading = false;
+            location.reload();
+        });
+        window.addEventListener('load', async () => {
+            try {
+                const reg = await navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
+                window.__swReg = reg;
+                const swLabel = document.getElementById('swStatusLabel');
+                if (swLabel) swLabel.innerText = '離線已就緒';
+                if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg.waiting);
+                reg.addEventListener('updatefound', () => {
+                    const nw = reg.installing;
+                    if (!nw) return;
+                    nw.addEventListener('statechange', () => {
+                        if (nw.state === 'installed' && navigator.serviceWorker.controller) showUpdateBanner(nw);
+                    });
+                });
+                // UP4：回前景／連線／每 30 分鐘檢查；唔做背景無限輪詢
+                const checkUpdate = () => reg.update().catch(() => {});
+                document.addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
+                window.addEventListener('online', checkUpdate);
+                setInterval(checkUpdate, 30 * 60 * 1000);
+            } catch (e) {
+                console.log('SW 註冊失敗', e);
+                const swLabel = document.getElementById('swStatusLabel');
+                if (swLabel) swLabel.innerText = '離線快取未啟用（可正常使用）';
+            }
+        });
+    }
+
+    /* 「檢查更新」掣：即時 reg.update()，有新版就出 banner */
+    const checkUpdateBtn = document.getElementById('checkUpdateBtn');
+    if (checkUpdateBtn){
+        checkUpdateBtn.addEventListener('click', async () => {
+            if (!('serviceWorker' in navigator) || !window.__swReg){
+                customAlert(TT('update.noSw', '此瀏覽器未支援離線快取，App 仍可正常使用。'));
+                return;
+            }
+            checkUpdateBtn.disabled = true;
+            try {
+                await window.__swReg.update();
+                if (window.__swReg.waiting && navigator.serviceWorker.controller){
+                    showUpdateBanner(window.__swReg.waiting);
+                } else {
+                    customAlert(TT('update.latest', '已檢查更新：你而家係最新版本（{v}）。', {v: APP_VERSION}));
+                }
+            } catch (e) {
+                customAlert(TT('update.failed', '檢查更新失敗，請確認網絡連線後再試。'));
+            } finally {
+                checkUpdateBtn.disabled = false;
+            }
+        });
+    }
+
+    /* 說明頁嘅「加入主畫面」掣同 header 掣同一套邏輯 */
+    const installBtn2 = document.getElementById('installBtn2');
+    if (installBtn2){
+        installBtn2.addEventListener('click', () => {
+            if (deferredPrompt){
+                deferredPrompt.prompt();
+                Promise.resolve(deferredPrompt.userChoice).catch(() => {}).finally(() => {
+                    deferredPrompt = null; hideInstallEntry();
+                });
+                return;
+            }
+            if (isStandalone()){ customAlert(TT('install.already', '已經安裝好了，直接由主畫面開啟就得。')); return; }
+            openInstallHelp();
+        });
+    }
 
     /* ============================================================
        快速短語
@@ -2027,6 +2882,7 @@
         try { localStorage.setItem(HKEY, JSON.stringify(arr.slice(0,50))); } catch(e){}
     }
     // 接收結束時呼叫，把這次成果存檔
+    // 賽後檢討／重播需要知道當時參數 → 連頻道、實測 WPM、通訊方向一齊記
     function commitHistory(){
         const text = (decodedOut || '').trim();
         if (!text) return;
@@ -2036,14 +2892,19 @@
             mode: decodeMode === 'sound' ? '🎙️聲音' : decodeMode === 'light' ? '💡光源' : '👆手動',
             text: text,
             morse: textToMorse(text),
-            wpm: estWpmEl.innerText
+            wpm: estWpmEl.innerText,
+            freq: toneFreq,                            // 當時頻道（Hz）
+            recvWpm: recvWPM || 0,                     // 0＝自動
+            dir: 'rx'                                  // rx = 接收；本機發送不記錄（見 README）
         });
         saveHistory(arr);
         renderHistory();
     }
     function clearHistory(){
-        if (!confirm('確定清除所有解碼歷史？')) return;
-        saveHistory([]); renderHistory();
+        customConfirm(TT('hist.confirmClear', '確定清除所有解碼歷史？'), () => {
+            saveHistory([]); renderHistory();
+            customAlert(TT('hist.cleared', '已清除所有解碼歷史。'));
+        });
     }
     function deleteHistory(idx){
         const arr = loadHistory(); arr.splice(idx,1); saveHistory(arr); renderHistory();
@@ -2057,27 +2918,99 @@
         if (navigator.share){ navigator.share({ title:'Scout Morse', text:it.text }).catch(()=>{}); }
         else copyHistory(idx);
     }
+    /* ---------- 匯出（CSV / JSON）----------
+       為甚麼要：歷史只在 localStorage，換機／清快取即失；帶隊比賽要交紀錄。
+       安全：CSV 一定以 UTF-8 BOM 開頭（Excel 中文唔亂碼），並對公式注入做防護
+       （Cell 以 = + - @ 開頭 → 前面加單引號；呢個係 CSV injection，不是開玩笑）。 */
+    function pad2(n){ return String(n).padStart(2, '0'); }
+    function stampForFile(){
+        const d = new Date();
+        return d.getFullYear() + pad2(d.getMonth()+1) + pad2(d.getDate())
+             + '-' + pad2(d.getHours()) + pad2(d.getMinutes());
+    }
+    function fmtTime(ms){
+        const d = new Date(ms);
+        return d.getFullYear() + '/' + pad2(d.getMonth()+1) + '/' + pad2(d.getDate())
+             + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+    }
+    // CSV 公式注入防護（A 系列：CSV injection）
+    function csvSafe(v){
+        let t = String(v ?? '');
+        if (/^[=+\-@\t\r]/.test(t)) t = "'" + t;
+        return '"' + t.replace(/"/g, '""') + '"';
+    }
+    function historyToCsv(arr){
+        const head = ['時間', '模式', '內容', '摩斯碼', 'WPM', '頻道(Hz)', '對方速度'];
+        const rows = arr.map(it => [
+            fmtTime(it.t),
+            String(it.mode || '').replace(/[^\u4e00-\u9fa5A-Za-z]/g, '') || it.mode || '',
+            it.text, it.morse, it.wpm, it.freq ?? '', it.recvWpm ? it.recvWpm + ' WPM' : '自動'
+        ].map(csvSafe).join(','));
+        return '\uFEFF' + head.map(csvSafe).join(',') + '\r\n' + rows.join('\r\n');
+    }
+    function downloadFile(name, text, mime){
+        try {
+            const blob = new Blob([text], { type: mime + ';charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = name;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 4000);
+            return true;
+        } catch (e) {
+            // 部分瀏覽器（或 file://）唔准下載 → 退回復製到剪貼簿，唔好淨係彈錯
+            navigator.clipboard?.writeText(text).then(
+                () => customAlert('呢個瀏覽器唔支援直接下載，內容已複製到剪貼簿，可貼落 Excel。'),
+                () => customAlert('匯出失敗：呢個瀏覽器唔支援下載，亦無法存取剪貼簿。')
+            );
+            return false;
+        }
+    }
+    function exportHistoryCsv(){
+        const arr = loadHistory();
+        if (!arr.length){ customAlert(TT('hist.nothing', '未有紀錄可以匯出。')); return; }
+        downloadFile('scout-morse-歷史-' + stampForFile() + '.csv', historyToCsv(arr), 'text/csv');
+    }
+    function exportHistoryJson(){
+        const arr = loadHistory();
+        if (!arr.length){ customAlert(TT('hist.nothing', '未有紀錄可以匯出。')); return; }
+        const payload = {
+            app: 'Scout Morse 發訊器',
+            version: APP_VERSION,
+            exportedAt: new Date().toISOString(),
+            count: arr.length,
+            records: arr
+        };
+        downloadFile('scout-morse-歷史-' + stampForFile() + '.json', JSON.stringify(payload, null, 2), 'application/json');
+    }
+
+    // A11：所有用戶／解碼內容入 HTML 前一律 escape（歷史紀錄係不可信輸入）
+    function escHtml(v){
+        return String(v ?? '').replace(/[&<>"']/g, (c) => ({
+            '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+        })[c]);
+    }
     function renderHistory(){
         const list = document.getElementById('historyList');
         const empty = document.getElementById('historyEmpty');
         if (!list) return;
         const arr = loadHistory();
-        if (!arr.length){ list.innerHTML=''; empty.classList.remove('hidden'); return; }
-        empty.classList.add('hidden');
+        if (!Array.isArray(arr) || !arr.length){ list.innerHTML=''; if (empty) empty.classList.remove('hidden'); return; }
+        if (empty) empty.classList.add('hidden');
         list.innerHTML = arr.map((it,i)=>{
             const d = new Date(it.t);
             const ts = d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
             return `<div class="p-3 rounded-xl bg-[#0b1220] border border-slate-800">
                 <div class="flex items-center justify-between mb-1">
-                    <span class="text-[10px] text-slate-500">${it.mode} · ${ts} · ${it.wpm||'?'}wpm</span>
+                    <span class="text-[10px] text-slate-500">${escHtml(it.mode)} · ${ts} · ${escHtml(it.wpm||'?')}wpm${it.freq ? ' · ' + escHtml(it.freq) + 'Hz' : ''}${it.recvWpm ? ' · 對方' + escHtml(it.recvWpm) + 'wpm' : ''}</span>
                     <span class="flex gap-2">
-                        <button onclick="shareHistory(${i})" class="text-[10px] text-slate-400 hover:text-white"><i class="fa-solid fa-share-nodes"></i></button>
-                        <button onclick="copyHistory(${i})" class="text-[10px] text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i></button>
-                        <button onclick="deleteHistory(${i})" class="text-[10px] text-slate-400 hover:text-red-400"><i class="fa-solid fa-xmark"></i></button>
+                        <button type="button" onclick="shareHistory(${i})" aria-label="分享第 ${i+1} 條紀錄" class="text-[10px] text-slate-400 hover:text-white px-1.5 py-1.5"><i class="fa-solid fa-share-nodes" aria-hidden="true"></i></button>
+                        <button type="button" onclick="copyHistory(${i})" aria-label="複製第 ${i+1} 條紀錄" class="text-[10px] text-slate-400 hover:text-white px-1.5 py-1.5"><i class="fa-regular fa-copy" aria-hidden="true"></i></button>
+                        <button type="button" onclick="deleteHistory(${i})" aria-label="刪除第 ${i+1} 條紀錄" class="text-[10px] text-slate-400 hover:text-red-400 px-1.5 py-1.5"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                     </span>
                 </div>
-                <div class="font-bold text-white break-words">${it.text.replace(/</g,'&lt;')}</div>
-                <div class="font-mono text-[11px] text-cyan-400 break-all tracking-widest mt-1">${it.morse}</div>
+                <div class="font-bold text-white break-words">${escHtml(it.text)}</div>
+                <div class="font-mono text-[11px] text-cyan-400 break-all tracking-widest mt-1">${escHtml(it.morse)}</div>
             </div>`;
         }).join('');
     }
@@ -2207,6 +3140,8 @@
         const pref = loadPref();
         const theme = pref.theme || 'dark';
         const font = pref.font || 100;
+        // 螢幕常亮預設開（接收時最需要）；用戶有一次關閉權
+        if (typeof pref.wakeOn === 'boolean') wakeLockEnabled = pref.wakeOn;
         document.querySelectorAll('#themeSel button').forEach(b=>{
             b.addEventListener('click', ()=>{ const p=loadPref(); p.theme=b.dataset.theme; savePref(p); applyTheme(b.dataset.theme); });
         });
@@ -2229,15 +3164,44 @@
         document.head.appendChild(css);
     })();
 
+    /* 開實體閃光燈前先問一次（會開相機權限；F9 危險／敏感動作三步） */
+    (function bindTorchToggle(){
+        const tEl = document.getElementById('torchOn');
+        if (!tEl) return;
+        let asked = false;   // 同一 session 只問一次，唔好每次開燈都彈
+        tEl.addEventListener('change', () => {
+            if (!tEl.checked || asked) return;
+            asked = true;
+            customConfirm('實體閃光燈需要相機權限（只作開燈，唔會錄影、唔會上傳）。確定開啟？', () => {
+                tEl.checked = true;
+                tEl.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+            tEl.checked = false;
+        });
+    })();
+
     /* ============================================================
        進頁面自動偵測「實體閃光燈」是否可用
        不會真的開燈：只開相機 stream 讀 capabilities 再立即關閉。
     ============================================================ */
+    // 切換語言後重繪手電筒相容性文字（唔會再開相機）
+    function reapplyTorchStatus(){
+        const el = document.getElementById('torchStatus');
+        if (!el || !el.dataset.i18nKey) return;
+        el.innerText = TT(el.dataset.i18nKey, el.dataset.zhText || el.innerText);
+    }
+
     async function detectTorch(){
         const statusEl = document.getElementById('torchStatus');
         const toggleEl = document.getElementById('torchOn');
-        const setUnsupported = (msg) => {
-            statusEl.innerText = msg;
+        // 狀態文字要雙語：記住 key + 中文原文，切換語言時可重繪（唔會殘留舊語言）
+        const setStatus = (key, zh) => {
+            statusEl.dataset.i18nKey = key;
+            statusEl.dataset.zhText = zh;
+            statusEl.innerText = TT(key, zh);
+        };
+        const setUnsupported = (key, zh) => {
+            setStatus(key, zh);
             statusEl.classList.remove('text-green-400');
             statusEl.classList.add('text-slate-500');
             toggleEl.checked = false;
@@ -2246,7 +3210,7 @@
         };
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-            setUnsupported('本機/瀏覽器不支援'); return;
+            setUnsupported('torch.noSupport', '本機/瀏覽器不支援'); return;
         }
         // iOS：需 Safari 17.4+，且其他瀏覽器(Chrome/Edge)拿不到 torch
         const isSafari = /^((?!chrome|android|crios|fxios|edgios).)*safari/i.test(navigator.userAgent);
@@ -2256,16 +3220,18 @@
             const caps = track.getCapabilities ? track.getCapabilities() : {};
             stream.getTracks().forEach(t=>t.stop()); // 立即關閉，不會亮燈
             if (caps && caps.torch){
-                statusEl.innerText = '✓ 本機可使用';
+                setStatus('torch.ok', '✓ 本機可使用');
                 statusEl.classList.remove('text-slate-500');
                 statusEl.classList.add('text-green-400');
                 toggleEl.disabled = false;
             } else {
-                setUnsupported(isIOS ? '本機不支援（需 iOS 17.4+ Safari）' : '本機不支援，請改用螢幕閃光');
+                setUnsupported(isIOS ? 'torch.iosOld' : 'torch.none',
+                            isIOS ? '本機不支援（需 iOS 17.4+ Safari）' : '本機不支援，請改用螢幕閃光');
             }
         } catch(e){
             // 使用者拒絕權限或無相機：先標示需授權，不鎖死開關
-            statusEl.innerText = isIOS && !isSafari ? 'iOS 請改用 Safari 開啟' : '需相機權限才能偵測';
+            setStatus(isIOS && !isSafari ? 'torch.needSafari' : 'torch.needPerm',
+                      isIOS && !isSafari ? 'iOS 請改用 Safari 開啟' : '需相機權限才能偵測');
             statusEl.classList.add('text-slate-500');
         }
     }
@@ -2285,12 +3251,8 @@
         } catch(e){}
     })();
 
-    // 循環發送間隔顯示
-    const loopOnEl = document.getElementById('loopOn');
-    const loopGapBoxEl = document.getElementById('loopGapBox');
-    if (loopOnEl && loopGapBoxEl){
-        loopOnEl.addEventListener('change', () => { loopGapBoxEl.style.display = loopOnEl.checked ? 'flex' : 'none'; });
-    }
+    // 循環發送間隔顯示：由 onLoopToggle() 統一處理（含 F9 確認），
+    // 唔可以再加第二個 change listener（會繞過確認直接顯示間隔設定）。
     // 手動拍打鍵與全螢幕拍鍵事件綁定
     function bindKeyEvents(el){
         if (!el) return;
@@ -2347,6 +3309,41 @@
             }
         }
     });
+
+    // 由其他 App 分享文字入嚟（manifest share_target → /share-target?text=...）
+    // 只接受純文字、長度上限 200 字，唔會自動開始發送（要人手按，配合 F9 倒數）
+    (function initSharedText(){
+        try {
+            if (!/\/share-target\/?$/.test(location.pathname)) return;
+            const params = new URLSearchParams(location.search);
+            const shared = (params.get('text') || params.get('title') || params.get('url') || '').trim();
+            if (!shared) return;
+            const clean = shared.slice(0, 200);
+            const ta = document.getElementById('messageInput');
+            if (ta){
+                ta.value = clean;
+                ta.dispatchEvent(new Event('input'));
+            }
+            switchTab('send', { silent: true });
+            setTimeout(() => customAlert(TT('share.received', '已接收分享內容並填入發送框：\n\n{t}\n\n確認無誤後按「開始發送」。', {t: clean})), 300);
+            // 清走 query，避免 reload 時重複彈
+            try { history.replaceState(null, '', location.pathname.replace(/\/share-target\/?$/, '/') ); } catch (e) {}
+        } catch (e) {}
+    })();
+
+    // 由網址 hash 還原分頁（#decode／#game／#tools／#info），分享連結同 reload 都停喺同一頁
+    (function initTabFromHash(){
+        const h = (location.hash || '').replace(/^#\/?/, '');
+        const valid = ['send','decode','game','tools','info'];
+        switchTab(valid.includes(h) ? h : 'send', { silent: true });
+        window.addEventListener('hashchange', () => {
+            const n = (location.hash || '').replace(/^#\/?/, '');
+            switchTab(valid.includes(n) ? n : 'send', { silent: true });
+        });
+    })();
+
+    // L3：套用已記住嘅語言（預設中文；壞值 fallback 中文，唔會白屏）
+    applyLang(loadLang());
 
     setWPM(15);
     setFreq(750);

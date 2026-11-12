@@ -1,0 +1,35 @@
+name: verify
+
+# 同 scripts/verify.mjs 一條龍：產物、引用、語法、垃圾檔、payload、圖標、
+# 版號同步、PWA 安裝／更新、防呆（無 alert/confirm）、XSS escape、
+# hidden 屬性 CSS 串接、無障礙、發送倒數、體積預算、螢幕常亮、雙語介面、
+# 歷史匯出、Beacon 防誤觸、PWA 捷徑／分享。
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '17 3 * * 1'   # 每週一 HKT 11:17，防止「靜靜變肥」
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # A16：Actions 釘 commit SHA（tag 可以被人移位），版號註解畀 Dependabot 認得再升
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: 零依賴驗證（24 組靜態檢查）
+        run: node scripts/verify.mjs
+      # 解碼引擎行為測試：由 index.html 抽出 @@PURE@@ 區塊，餵合成摩斯音訊／亮度序列，
+      # 驗「真係解得到正確文字」（靜態 grep 驗唔到呢樣）
+      - name: 解碼引擎行為測試（83 項）
+        run: node scripts/decode.test.mjs

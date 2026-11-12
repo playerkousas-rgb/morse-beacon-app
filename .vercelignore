@@ -12,6 +12,15 @@
 .vercel
 .vercelignore
 
+# --- CI／建置設定（Vercel 部署唔需要；vercel.json 由 Vercel 自己讀，唔會部署）---
+.github
+package.json
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+vercel.json
+LICENSE
+
 # --- 套件依賴（本專案零 npm 依賴，此為防護性條目，防止未來誤裝後整包上傳）---
 node_modules
 
@@ -47,5 +56,7 @@ assets/css/tailwind.input.css
 # --- 開發工具與說明文件（非網頁產物）---
 scripts
 README.md
+審核報告_v5.1.0.md
+審核報告_v5.2.0_v5.4.0.md
 部署說明.md
 上傳說明.txt

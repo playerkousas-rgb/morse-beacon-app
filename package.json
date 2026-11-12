@@ -1,0 +1,16 @@
+{
+  "name": "morse-beacon-app",
+  "private": true,
+  "version": "5.4.0",
+  "type": "module",
+  "description": "Scout Morse 發訊器 — 摩斯密碼發送／接收解碼 PWA（純靜態、零依賴）",
+  "license": "SEE LICENSE IN LICENSE",
+  "scripts": {
+    "check": "node scripts/verify.mjs",
+    "test": "node scripts/verify.mjs && node scripts/decode.test.mjs",
+    "test:decode": "node scripts/decode.test.mjs",
+    "build": "node scripts/verify.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
